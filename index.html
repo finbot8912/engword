@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EngWord — Leveled English Dictionary</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand" id="brandHome" title="Home">
+    <span class="logo">📖</span>
+    <span class="brand-name">EngWord</span>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn" data-view="lookup">Dictionary</button>
+    <button class="nav-btn" data-view="mybook">My Wordbook</button>
+    <button class="nav-btn" data-view="settings">Settings</button>
+  </nav>
+  <div class="level-badge" id="levelBadge" title="Your level (click to retake test)">Level: —</div>
+</header>
+
+<main id="app">
+
+  <!-- ============ API KEY SETUP ============ -->
+  <section id="view-apikey" class="view">
+    <div class="card center-card">
+      <h1>Welcome to EngWord</h1>
+      <p class="muted">A personal English dictionary that explains words at <em>your</em> level,
+        with Collins-style plain-English definitions, Longman-style synonym notes, and AI pictures.</p>
+      <p>To begin, paste your <strong>Google Gemini API key</strong>. It is stored only in your browser
+        (localStorage) and sent only to Google's API.</p>
+      <div class="field-row">
+        <input type="password" id="apiKeyInput" placeholder="Paste your Gemini API key (AIza...)" autocomplete="off" />
+        <button class="primary" id="saveKeyBtn">Save key</button>
+      </div>
+      <p class="hint">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</p>
+      <p class="error" id="apiKeyError"></p>
+    </div>
+  </section>
+
+  <!-- ============ LEVEL TEST ============ -->
+  <section id="view-test" class="view">
+    <div class="card center-card">
+      <h1>Quick Level Check</h1>
+      <p class="muted">Answer a few short questions so explanations match your level (A1–C2).</p>
+      <p class="skip-hint">Press <kbd>h</kbd> at any time to skip the test and continue without a level.</p>
+      <div id="quizBox">
+        <div class="quiz-progress" id="quizProgress"></div>
+        <h2 class="quiz-question" id="quizQuestion"></h2>
+        <div class="quiz-options" id="quizOptions"></div>
+      </div>
+      <div id="quizResult" class="hidden">
+        <h2>Your level: <span id="quizLevel" class="level-pill"></span></h2>
+        <p id="quizLevelDesc" class="muted"></p>
+        <button class="primary" id="startLookupBtn">Start looking up words →</button>
+      </div>
+      <button class="ghost" id="skipTestBtn">Skip (h)</button>
+    </div>
+  </section>
+
+  <!-- ============ DICTIONARY / LOOKUP ============ -->
+  <section id="view-lookup" class="view">
+    <div class="search-wrap">
+      <input type="text" id="wordInput" placeholder="Type an English word… (e.g. resilient)" autocomplete="off" spellcheck="false" />
+      <button class="primary" id="lookupBtn">Look up</button>
+    </div>
+    <p class="hint center">Explanations are adapted to your level<span id="levelInline"></span>. Press <kbd>h</kbd> on the test screen to use the dictionary without a level.</p>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p id="loadingMsg">Consulting the dictionary…</p>
+    </div>
+    <p class="error center" id="lookupError"></p>
+
+    <article id="entry" class="entry hidden">
+      <div class="entry-head">
+        <h1 id="entryWord"></h1>
+        <span id="entryPron" class="pron"></span>
+        <span id="entryPos" class="pos"></span>
+        <button class="ghost small" id="saveEntryBtn">★ Saved to wordbook</button>
+      </div>
+
+      <div class="entry-grid">
+        <div class="entry-main">
+          <section class="block">
+            <h3>Definition <span class="tag">Collins-style</span></h3>
+            <ol id="entryDefs" class="defs"></ol>
+          </section>
+
+          <section class="block">
+            <h3>Synonyms <span class="tag">Longman-style</span></h3>
+            <div id="entrySyns" class="syns"></div>
+          </section>
+
+          <section class="block">
+            <h3>Word Origin <span class="tag">Etymology</span></h3>
+            <p id="entryEtym"></p>
+          </section>
+
+          <section class="block">
+            <h3>Idioms &amp; Phrases</h3>
+            <ul id="entryIdioms" class="idioms"></ul>
+          </section>
+
+          <section class="block">
+            <h3>Similar Sentences</h3>
+            <ul id="entrySents" class="sents"></ul>
+          </section>
+        </div>
+
+        <aside class="entry-side">
+          <section class="block">
+            <h3>Picture</h3>
+            <div class="img-box" id="imgBox">
+              <div class="img-loading" id="imgLoading"><div class="spinner small"></div><p>Drawing the word…</p></div>
+              <img id="entryImg" class="hidden" alt="AI illustration of the word" />
+              <div class="img-reveal hidden" id="imgReveal">
+                <h4 id="revealWord"></h4>
+                <p class="reveal-en" id="revealEn"></p>
+                <p class="reveal-ko" id="revealKo"></p>
+                <button class="ghost small" id="revealBackBtn">← back to picture</button>
+              </div>
+            </div>
+            <p class="hint">Click the picture to see the meaning in English and Korean.</p>
+          </section>
+        </aside>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ MY WORDBOOK ============ -->
+  <section id="view-mybook" class="view">
+    <h1 class="page-title">My Wordbook</h1>
+    <p class="muted center">Every word you look up is saved here so you can review it again.</p>
+    <div class="tabs" id="bookTabs">
+      <button class="tab active" data-tab="words">Wordbook</button>
+      <button class="tab" data-tab="etymology">Etymology</button>
+      <button class="tab" data-tab="idioms">Idioms</button>
+      <button class="tab" data-tab="synonyms">Synonyms</button>
+      <button class="tab" data-tab="sentences">Similar Sentences</button>
+    </div>
+    <div id="bookContent" class="book-content"></div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="view-settings" class="view">
+    <div class="card center-card">
+      <h1>Settings</h1>
+      <label class="field-label">Gemini API key</label>
+      <div class="field-row">
+        <input type="password" id="settingsKeyInput" placeholder="AIza..." autocomplete="off" />
+        <button class="primary" id="settingsSaveKeyBtn">Update key</button>
+      </div>
+      <label class="field-label">Text model</label>
+      <input type="text" id="textModelInput" />
+      <label class="field-label">Image model</label>
+      <input type="text" id="imageModelInput" />
+      <hr />
+      <div class="field-row">
+        <button class="ghost" id="retakeTestBtn">Retake level test</button>
+        <button class="ghost danger" id="clearBookBtn">Delete all saved words</button>
+      </div>
+      <p class="hint" id="settingsMsg"></p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">EngWord · explanations in English only · pictures by Gemini image model</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
