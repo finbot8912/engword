@@ -18,13 +18,19 @@ const LS = {
   WOTD: "engword_wotd",
 };
 
-const DEFAULT_TEXT_MODEL = "gemini-3.1-flash-lite";
-const DEFAULT_IMAGE_MODEL = "gemini-3.1-flash-image";
+// Stable alias defaults — actual newest models are auto-detected from the
+// user's account via ListModels (see autoDetectModels) on first use / on 404.
+const DEFAULT_TEXT_MODEL = "gemini-flash-lite-latest";
+const DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
-// Migrate users who still have the old default text model stored.
-if (localStorage.getItem(LS.TEXT_MODEL) === "gemini-2.5-flash") {
-  localStorage.setItem(LS.TEXT_MODEL, DEFAULT_TEXT_MODEL);
+// Migrate stored model ids that don't exist on the API (caused 404 errors).
+for (const [lsKey, bad] of [
+  [LS.TEXT_MODEL, /^gemini-(3\.1-|2\.5-flash$)/],
+  [LS.IMAGE_MODEL, /^gemini-3\.1-/],
+]) {
+  const v = localStorage.getItem(lsKey);
+  if (v && bad.test(v)) localStorage.removeItem(lsKey);
 }
 
 const state = {
@@ -108,6 +114,10 @@ function boot() {
   if (!state.apiKey) show("apikey");
   else if (!state.level) startQuiz();
   else show("lookup");
+  // If we've never confirmed real model ids for this account, detect them quietly.
+  if (state.apiKey && !localStorage.getItem(LS.TEXT_MODEL)) {
+    autoDetectModels().catch(() => {});
+  }
 }
 
 /* ============================================================
@@ -126,6 +136,7 @@ function saveKey(value, errEl) {
 
 $("saveKeyBtn").addEventListener("click", () => {
   if (saveKey($("apiKeyInput").value, $("apiKeyError"))) {
+    autoDetectModels().catch(() => {}); // pick real model ids for this account
     state.level ? show("lookup") : startQuiz();
   }
 });
@@ -200,52 +211,121 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* ============================================================
-   Gemini calls
+   Gemini calls — with model auto-detection & 404 auto-retry
    ============================================================ */
-async function geminiText(prompt) {
-  const res = await fetch(`${API_BASE}/${state.textModel}:generateContent?key=${encodeURIComponent(state.apiKey)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json", temperature: 0.6 },
-    }),
-  });
+async function listModels() {
+  const res = await fetch(`${API_BASE}?key=${encodeURIComponent(state.apiKey)}&pageSize=200`);
   if (!res.ok) throw new Error(await apiErrorMessage(res));
   const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
-  return JSON.parse(text);
+  return (data.models || [])
+    .map((m) => ({
+      id: (m.name || "").replace(/^models\//, ""),
+      methods: m.supportedGenerationMethods || [],
+    }))
+    .filter((m) => m.methods.includes("generateContent"));
+}
+
+function modelVersion(id) {
+  const m = id.match(/gemini-(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+function pickTextModel(models) {
+  const candidates = models.filter((m) =>
+    !/image|imagen|tts|audio|embed|live|veo|robotics|computer-use|aqa/.test(m.id));
+  const score = (m) =>
+    modelVersion(m.id) * 100 +
+    (/flash-lite/.test(m.id) ? 20 : /flash/.test(m.id) ? 10 : 0) -
+    (/preview|exp/.test(m.id) ? 1 : 0);
+  return candidates.sort((a, b) => score(b) - score(a))[0]?.id;
+}
+
+function pickImageModel(models) {
+  const candidates = models.filter((m) => /image/.test(m.id) && !/imagen|veo/.test(m.id));
+  const score = (m) =>
+    modelVersion(m.id) * 100 +
+    (/flash-image/.test(m.id) ? 10 : 0) -
+    (/preview|exp/.test(m.id) ? 1 : 0);
+  return candidates.sort((a, b) => score(b) - score(a))[0]?.id;
+}
+
+// Query the account's real model list and switch to the best available ones.
+async function autoDetectModels() {
+  const models = await listModels();
+  const text = pickTextModel(models);
+  const image = pickImageModel(models);
+  if (text) { state.textModel = text; localStorage.setItem(LS.TEXT_MODEL, text); }
+  if (image) { state.imageModel = image; localStorage.setItem(LS.IMAGE_MODEL, image); }
+  return { text, image, count: models.length };
+}
+
+// POST :generateContent; on 404 (bad model id) auto-detect models and retry once.
+async function postGenerate(kind, body) {
+  const url = (model) =>
+    `${API_BASE}/${model}:generateContent?key=${encodeURIComponent(state.apiKey)}`;
+  const opts = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+  const model = kind === "image" ? state.imageModel : state.textModel;
+  let res = await fetch(url(model), opts);
+  if (res.status === 404) {
+    await autoDetectModels().catch(() => {});
+    const next = kind === "image" ? state.imageModel : state.textModel;
+    if (next !== model) res = await fetch(url(next), opts);
+  }
+  if (!res.ok) throw new Error(await apiErrorMessage(res));
+  return res.json();
+}
+
+async function geminiText(prompt) {
+  const data = await postGenerate("text", {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: "application/json", temperature: 0.6 },
+  });
+  let text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+  // Some models wrap JSON in ```json fences despite responseMimeType.
+  text = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  try { return JSON.parse(text); }
+  catch { throw new Error("The model returned an unexpected answer — please try again."); }
 }
 
 // Plain-text chat with history, for the AI Tutor.
 async function geminiChat(history) {
-  const res = await fetch(`${API_BASE}/${state.textModel}:generateContent?key=${encodeURIComponent(state.apiKey)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: history.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
-      generationConfig: { temperature: 0.7 },
-    }),
+  const data = await postGenerate("text", {
+    contents: history.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+    generationConfig: { temperature: 0.7 },
   });
-  if (!res.ok) throw new Error(await apiErrorMessage(res));
-  const data = await res.json();
   return data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
 }
 
 async function geminiImage(prompt) {
-  const res = await fetch(`${API_BASE}/${state.imageModel}:generateContent?key=${encodeURIComponent(state.apiKey)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseModalities: ["IMAGE"] },
-    }),
-  });
-  if (!res.ok) throw new Error(await apiErrorMessage(res));
-  const data = await res.json();
-  const part = data?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
-  if (!part) throw new Error("The image model returned no image.");
-  return `data:${part.inlineData.mimeType || "image/png"};base64,${part.inlineData.data}`;
+  // Image models differ in which response-modality configs they accept,
+  // so fall back through the known variants.
+  const configs = [
+    { responseModalities: ["IMAGE"] },
+    { responseModalities: ["TEXT", "IMAGE"] },
+    null,
+  ];
+  let lastErr = null;
+  for (const generationConfig of configs) {
+    const body = { contents: [{ parts: [{ text: prompt }] }] };
+    if (generationConfig) body.generationConfig = generationConfig;
+    try {
+      const data = await postGenerate("image", body);
+      const part = data?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
+      if (part) {
+        return `data:${part.inlineData.mimeType || "image/png"};base64,${part.inlineData.data}`;
+      }
+      lastErr = new Error("The image model returned no image.");
+    } catch (err) {
+      lastErr = err;
+      // Only a 400 (unsupported config) is worth retrying with another config.
+      if (!/\(400\)/.test(err.message || "")) throw err;
+    }
+  }
+  throw lastErr;
 }
 
 async function apiErrorMessage(res) {
@@ -254,8 +334,10 @@ async function apiErrorMessage(res) {
     const j = await res.json();
     if (j?.error?.message) msg += ": " + j.error.message;
   } catch { /* keep generic message */ }
-  if (res.status === 400 || res.status === 403) msg += " — check your API key in Settings.";
-  if (res.status === 404) msg += " — check the model name in Settings.";
+  if (res.status === 400) msg += " — the request was rejected; if this keeps happening, use “Auto-detect best models” in Settings.";
+  if (res.status === 401 || res.status === 403) msg += " — your API key was refused; check it in Settings.";
+  if (res.status === 404) msg += " — that model doesn't exist on your account; use “Auto-detect best models” in Settings.";
+  if (res.status === 429) msg += " — rate limit / quota reached; wait a moment and try again.";
   return msg;
 }
 
@@ -915,6 +997,28 @@ $("imageModelInput").addEventListener("change", () => {
   localStorage.setItem(LS.IMAGE_MODEL, state.imageModel);
   $("settingsMsg").textContent = "Image model updated.";
 });
+$("detectModelsBtn").addEventListener("click", async () => {
+  $("settingsMsg").textContent = "Checking which models your key can use…";
+  try {
+    const r = await autoDetectModels();
+    fillSettings();
+    $("settingsMsg").textContent =
+      `Found ${r.count} usable models. Text: ${r.text || "none"} · Image: ${r.image || "none — pictures won't work on this key"}.`;
+  } catch (err) {
+    $("settingsMsg").textContent = err.message || String(err);
+  }
+});
+
+$("testApiBtn").addEventListener("click", async () => {
+  $("settingsMsg").textContent = "Testing connection…";
+  try {
+    const reply = await geminiChat([{ role: "user", text: "Reply with the single word: OK" }]);
+    $("settingsMsg").textContent = `✓ Connection OK — “${reply.trim().slice(0, 40)}” from ${state.textModel}.`;
+  } catch (err) {
+    $("settingsMsg").textContent = "✗ " + (err.message || String(err));
+  }
+});
+
 $("retakeTestBtn").addEventListener("click", startQuiz);
 $("clearBookBtn").addEventListener("click", () => {
   if (confirm("Delete ALL saved words? This cannot be undone.")) {
