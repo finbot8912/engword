@@ -51,8 +51,10 @@ h1, h2 { letter-spacing: -.02em; }
   display: grid; place-items: center;
   box-shadow: 0 4px 12px rgba(79, 70, 229, .35);
 }
+.brand-text { display: flex; flex-direction: column; line-height: 1.15; }
 .brand-name { font-weight: 800; font-size: 18px; letter-spacing: -.02em; }
 .brand-dot { color: var(--accent); }
+.brand-tagline { font-size: 10.5px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
 .nav { display: flex; gap: 2px; flex: 1; flex-wrap: wrap; }
 .nav-btn {
   border: none; background: transparent; color: var(--muted);
