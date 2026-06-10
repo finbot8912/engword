@@ -177,6 +177,7 @@ const I18N = {
     "book.none.syn": "저장된 동의어가 없습니다.", "book.none.sents": "저장된 문장이 없습니다.",
 
     "set.eyebrow": "설정", "set.title": "내 설정",
+    "set.lang": "화면 언어 / Language",
     "set.update": "키 변경", "set.text": "텍스트 모델", "set.image": "이미지 모델",
     "set.detect": "모델 자동 감지", "set.test": "연결 테스트",
     "set.hint": "“model not found” 에러가 나면 <strong>모델 자동 감지</strong>를 누르세요 — 내 키로 쓸 수 있는 최신 모델로 자동 전환합니다.",
@@ -244,6 +245,8 @@ function applyLang() {
     el.placeholder = state.lang === "ko" ? (I18N.ko[k] ?? I18N_DEFAULTS["ph:" + k]) : I18N_DEFAULTS["ph:" + k];
   });
   $("langToggle").textContent = state.lang === "ko" ? "EN" : "한";
+  $("langEnBtn").classList.toggle("sel", state.lang === "en");
+  $("langKoBtn").classList.toggle("sel", state.lang === "ko");
   updateLevelBadge();
   // refresh dynamic texts on the visible view
   if (state.currentView === "lookup") renderWotdCard();
@@ -251,11 +254,15 @@ function applyLang() {
   if (state.currentView === "mybook") renderBook(currentTab);
 }
 
-$("langToggle").addEventListener("click", () => {
-  state.lang = state.lang === "ko" ? "en" : "ko";
-  localStorage.setItem(LS.LANG, state.lang);
+function setLang(l) {
+  state.lang = l;
+  localStorage.setItem(LS.LANG, l);
   applyLang();
-});
+}
+
+$("langToggle").addEventListener("click", () => setLang(state.lang === "ko" ? "en" : "ko"));
+$("langEnBtn").addEventListener("click", () => setLang("en"));
+$("langKoBtn").addEventListener("click", () => setLang("ko"));
 
 /* ============================================================
    View switching
