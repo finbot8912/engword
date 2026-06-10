@@ -295,6 +295,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 24px 0 14px; }
 .img-box img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; transition: transform .25s; }
 .img-box img:hover { transform: scale(1.03); }
 .img-loading { text-align: center; color: var(--muted); font-size: 13px; padding: 10px; }
+.img-draw { font-size: 15px; padding: 12px 22px; box-shadow: var(--shadow); }
 .img-reveal {
   position: absolute; inset: 0; background: rgba(15, 23, 42, .95); color: #fff;
   padding: 20px; overflow: auto; display: flex; flex-direction: column; gap: 9px;

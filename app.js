@@ -130,6 +130,7 @@ const I18N = {
     "entry.picture": "그림", "entry.keep": "이어서 학습",
     "entry.cta.flash": "🃏 플래시카드 복습", "entry.cta.coach": "✍️ 문장으로 써보기", "entry.cta.tutor": "💬 AI 튜터에게 질문",
     "entry.imghint": "그림을 누르면 영어와 한국어 설명이 나옵니다.",
+    "entry.drawbtn": "🎨 이미지로 보기",
     "entry.back": "← 그림으로", "entry.drawing": "단어를 그리는 중…", "entry.imgfail": "그림을 그리지 못했습니다.",
 
     "prac.eyebrow": "연습", "prac.title": "단어를 완전히 내 것으로",
@@ -578,7 +579,6 @@ async function lookup(word) {
     state.currentEntry = entry;
     renderEntry(entry);
     saveToBook(entry);
-    loadEntryImage(entry); // async, fills in when ready
   } catch (err) {
     $("lookupError").textContent = err.message || String(err);
   } finally {
@@ -588,6 +588,7 @@ async function lookup(word) {
 }
 
 async function loadEntryImage(entry) {
+  $("drawImgBtn").classList.add("hidden");
   $("imgLoading").classList.remove("hidden");
   $("imgLoading").innerHTML = `<div class="spinner small"></div><p>${t("entry.drawing")}</p>`;
   $("entryImg").classList.add("hidden");
@@ -603,6 +604,7 @@ async function loadEntryImage(entry) {
   } catch (err) {
     if (state.currentEntry === entry) {
       $("imgLoading").innerHTML = `<p>${t("entry.imgfail")}<br><span class="error">${escapeHtml(err.message || String(err))}</span></p>`;
+      $("drawImgBtn").classList.remove("hidden"); // allow retry
     }
   }
 }
@@ -645,6 +647,9 @@ function renderEntry(e) {
   $("entrySents").innerHTML = (e.similarSentences || []).map((s) =>
     `<li>${escapeHtml(s)}</li>`).join("");
 
+  // image box starts empty: the picture is drawn only when the user asks
+  resetImageBox();
+
   // reveal panel content (shown when the picture is clicked)
   $("revealWord").textContent = e.word || "";
   $("revealEn").textContent = e.shortEnglish || (e.definitions?.[0]?.definition ?? "");
@@ -653,6 +658,19 @@ function renderEntry(e) {
 
   $("entry").classList.remove("hidden");
 }
+
+function resetImageBox() {
+  $("drawImgBtn").classList.remove("hidden");
+  $("imgLoading").classList.add("hidden");
+  $("entryImg").classList.add("hidden");
+  $("entryImg").src = "";
+  $("imgReveal").classList.add("hidden");
+}
+
+// The picture is generated on demand only.
+$("drawImgBtn").addEventListener("click", () => {
+  if (state.currentEntry) loadEntryImage(state.currentEntry);
+});
 
 // Picture click → show English + Korean explanation; back button returns to picture.
 $("entryImg").addEventListener("click", () => $("imgReveal").classList.remove("hidden"));
@@ -812,7 +830,6 @@ function openSavedEntry(key) {
   $("wordInput").value = entry.word;
   $("lookupError").textContent = "";
   renderEntry(entry);
-  loadEntryImage(entry);
 }
 
 /* ============================================================
