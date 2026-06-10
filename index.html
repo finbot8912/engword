@@ -21,13 +21,14 @@
     </span>
   </div>
   <nav class="nav" id="mainNav">
-    <button class="nav-btn" data-view="lookup"><span class="nav-ico">📖</span><span class="nav-lbl">Dictionary</span></button>
-    <button class="nav-btn" data-view="practice"><span class="nav-ico">🎯</span><span class="nav-lbl">Practice</span></button>
-    <button class="nav-btn" data-view="coach"><span class="nav-ico">✍️</span><span class="nav-lbl nav-lbl-full">Writing </span><span class="nav-lbl">Coach</span></button>
-    <button class="nav-btn" data-view="tutor"><span class="nav-ico">💬</span><span class="nav-lbl nav-lbl-full">AI </span><span class="nav-lbl">Tutor</span></button>
-    <button class="nav-btn" data-view="mybook"><span class="nav-ico">📚</span><span class="nav-lbl">Wordbook</span></button>
-    <button class="nav-btn" data-view="settings"><span class="nav-ico">⚙️</span><span class="nav-lbl">Settings</span></button>
+    <button class="nav-btn" data-view="lookup"><span class="nav-ico">📖</span><span class="nav-lbl" data-i18n="nav.dictionary">Dictionary</span></button>
+    <button class="nav-btn" data-view="practice"><span class="nav-ico">🎯</span><span class="nav-lbl" data-i18n="nav.practice">Practice</span></button>
+    <button class="nav-btn" data-view="coach"><span class="nav-ico">✍️</span><span class="nav-lbl nav-lbl-full" data-i18n="nav.writing">Writing&nbsp;</span><span class="nav-lbl" data-i18n="nav.coach">Coach</span></button>
+    <button class="nav-btn" data-view="tutor"><span class="nav-ico">💬</span><span class="nav-lbl nav-lbl-full" data-i18n="nav.ai">AI&nbsp;</span><span class="nav-lbl" data-i18n="nav.tutor">Tutor</span></button>
+    <button class="nav-btn" data-view="mybook"><span class="nav-ico">📚</span><span class="nav-lbl" data-i18n="nav.wordbook">Wordbook</span></button>
+    <button class="nav-btn" data-view="settings"><span class="nav-ico">⚙️</span><span class="nav-lbl" data-i18n="nav.settings">Settings</span></button>
   </nav>
+  <button class="lang-toggle" id="langToggle" title="한국어 / English">한</button>
   <div class="level-badge" id="levelBadge" title="Your level — click to retake the test">—</div>
 </header>
 
@@ -39,17 +40,17 @@
       <div class="onboard-art">
         <div class="onboard-glyph">Aa</div>
         <p class="eyebrow">핀테크놀러지 AI 교육</p>
-        <h1>Learn English words<br /><em>at your level.</em></h1>
-        <p>Collins-style definitions · Longman-style synonyms · AI pictures · personal wordbook · writing coach &amp; tutor.</p>
+        <h1 data-i18n="ob.title">Learn English words<br /><em>at your level.</em></h1>
+        <p data-i18n="ob.sub">Collins-style definitions · Longman-style synonyms · AI pictures · personal wordbook · writing coach &amp; tutor.</p>
       </div>
       <div class="card onboard-card">
-        <h2>Get started</h2>
-        <p class="muted">Paste your <strong>OpenAI API key</strong>. It is stored only in this browser and sent only to OpenAI's API.</p>
+        <h2 data-i18n="ob.getstarted">Get started</h2>
+        <p class="muted" data-i18n="ob.keyinfo">Paste your <strong>OpenAI API key</strong>. It is stored only in this browser and sent only to OpenAI's API.</p>
         <div class="field-row">
           <input type="password" id="apiKeyInput" placeholder="OpenAI API key (sk-...)" autocomplete="off" />
         </div>
-        <button class="primary wide" id="saveKeyBtn">Save key &amp; continue</button>
-        <p class="hint">Get a key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>.</p>
+        <button class="primary wide" id="saveKeyBtn" data-i18n="ob.savekey">Save key &amp; continue</button>
+        <p class="hint" data-i18n="ob.keyhint">Get a key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>.</p>
         <p class="error" id="apiKeyError"></p>
       </div>
     </div>
@@ -58,39 +59,39 @@
   <!-- ============ LEVEL TEST ============ -->
   <section id="view-test" class="view">
     <div class="card center-card">
-      <p class="eyebrow">Placement test</p>
-      <h1>Quick Level Check</h1>
-      <p class="muted">Answer a few short questions so explanations match your level (A1–C2).</p>
-      <p class="skip-hint">Press <kbd>h</kbd> at any time to skip the test and continue without a level.</p>
+      <p class="eyebrow" data-i18n="test.eyebrow">Placement test</p>
+      <h1 data-i18n="test.title">Quick Level Check</h1>
+      <p class="muted" data-i18n="test.desc">Answer a few short questions so explanations match your level (A1–C2).</p>
+      <p class="skip-hint" data-i18n="test.skiphint">Press <kbd>h</kbd> at any time to skip the test and continue without a level.</p>
       <div id="quizBox">
         <div class="quiz-progress"><div class="quiz-bar"><div id="quizBarFill"></div></div><span id="quizProgress"></span></div>
         <h2 class="quiz-question" id="quizQuestion"></h2>
         <div class="quiz-options" id="quizOptions"></div>
       </div>
       <div id="quizResult" class="hidden">
-        <h2>Your level: <span id="quizLevel" class="level-pill"></span></h2>
+        <h2><span data-i18n="test.yourlevel">Your level:</span> <span id="quizLevel" class="level-pill"></span></h2>
         <p id="quizLevelDesc" class="muted"></p>
-        <button class="primary" id="startLookupBtn">Start looking up words →</button>
+        <button class="primary" id="startLookupBtn" data-i18n="test.start">Start looking up words →</button>
       </div>
-      <button class="ghost" id="skipTestBtn">Skip (h)</button>
+      <button class="ghost" id="skipTestBtn" data-i18n="test.skip">Skip (h)</button>
     </div>
   </section>
 
   <!-- ============ DICTIONARY / LOOKUP ============ -->
   <section id="view-lookup" class="view">
     <div class="hero">
-      <h1 class="hero-title">What word are you curious about?</h1>
-      <p class="hero-sub">Explained in plain English, at your level<span id="levelInline"></span> — with synonyms, origins and a picture.</p>
+      <h1 class="hero-title" data-i18n="hero.title">What word are you curious about?</h1>
+      <p class="hero-sub"><span data-i18n="hero.sub1">Explained in plain English, at your level</span><span id="levelInline"></span><span data-i18n="hero.sub2"> — with synonyms, origins and a picture.</span></p>
       <div class="search-wrap">
         <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input type="text" id="wordInput" placeholder="Type an English word… e.g. resilient" autocomplete="off" spellcheck="false" />
-        <button class="primary" id="lookupBtn">Look up</button>
+        <input type="text" id="wordInput" placeholder="Type an English word… e.g. resilient" data-i18n-ph="search.ph" autocomplete="off" spellcheck="false" />
+        <button class="primary" id="lookupBtn" data-i18n="search.btn">Look up</button>
       </div>
     </div>
 
     <div class="wotd card" id="wotdCard">
       <div class="wotd-left">
-        <p class="eyebrow">Word of the day</p>
+        <p class="eyebrow" data-i18n="wotd.eyebrow">Word of the day</p>
         <h3 id="wotdWord">—</h3>
         <p class="muted" id="wotdTeaser">A fresh word picked for your level, every day.</p>
       </div>
@@ -109,40 +110,40 @@
         <button class="speak-btn" id="speakWordBtn" title="Listen">🔊</button>
         <span id="entryPron" class="pron"></span>
         <span id="entryPos" class="pos"></span>
-        <span class="saved-flag" id="saveEntryBtn">★ saved to wordbook</span>
+        <span class="saved-flag" id="saveEntryBtn" data-i18n="entry.saved">★ saved to wordbook</span>
       </div>
 
       <div class="entry-grid">
         <div class="entry-main">
           <section class="block">
-            <h3>Definition <span class="tag">Collins-style</span></h3>
+            <h3 data-i18n="entry.def">Definition <span class="tag">Collins-style</span></h3>
             <ol id="entryDefs" class="defs"></ol>
           </section>
 
           <section class="block">
-            <h3>Synonyms <span class="tag">Longman-style</span></h3>
+            <h3 data-i18n="entry.syn">Synonyms <span class="tag">Longman-style</span></h3>
             <div id="entrySyns" class="syns"></div>
           </section>
 
           <section class="block">
-            <h3>Word Origin <span class="tag">Etymology</span></h3>
+            <h3 data-i18n="entry.origin">Word Origin <span class="tag">Etymology</span></h3>
             <p id="entryEtym" class="etym"></p>
           </section>
 
           <section class="block">
-            <h3>Idioms &amp; Phrases</h3>
+            <h3 data-i18n="entry.idioms">Idioms &amp; Phrases</h3>
             <ul id="entryIdioms" class="idioms"></ul>
           </section>
 
           <section class="block">
-            <h3>Similar Sentences</h3>
+            <h3 data-i18n="entry.sents">Similar Sentences</h3>
             <ul id="entrySents" class="sents"></ul>
           </section>
         </div>
 
         <aside class="entry-side">
           <section class="block">
-            <h3>Picture</h3>
+            <h3 data-i18n="entry.picture">Picture</h3>
             <div class="img-box" id="imgBox">
               <div class="img-loading" id="imgLoading"><div class="spinner small"></div><p>Drawing the word…</p></div>
               <img id="entryImg" class="hidden" alt="AI illustration of the word" />
@@ -150,16 +151,16 @@
                 <h4 id="revealWord"></h4>
                 <p class="reveal-en" id="revealEn"></p>
                 <p class="reveal-ko" id="revealKo"></p>
-                <button class="ghost small" id="revealBackBtn">← back to picture</button>
+                <button class="ghost small" id="revealBackBtn" data-i18n="entry.back">← back to picture</button>
               </div>
             </div>
-            <p class="hint">Click the picture to see the meaning in English and Korean.</p>
+            <p class="hint" data-i18n="entry.imghint">Click the picture to see the meaning in English and Korean.</p>
           </section>
           <section class="block side-cta">
-            <h3>Keep learning</h3>
-            <button class="ghost wide" id="practiceCta">🃏 Review with flashcards</button>
-            <button class="ghost wide" id="coachCta">✍️ Use it in a sentence</button>
-            <button class="ghost wide" id="tutorCta">💬 Ask the AI tutor</button>
+            <h3 data-i18n="entry.keep">Keep learning</h3>
+            <button class="ghost wide" id="practiceCta" data-i18n="entry.cta.flash">🃏 Review with flashcards</button>
+            <button class="ghost wide" id="coachCta" data-i18n="entry.cta.coach">✍️ Use it in a sentence</button>
+            <button class="ghost wide" id="tutorCta" data-i18n="entry.cta.tutor">💬 Ask the AI tutor</button>
           </section>
         </aside>
       </div>
@@ -169,25 +170,25 @@
   <!-- ============ PRACTICE ============ -->
   <section id="view-practice" class="view">
     <div class="page-head">
-      <p class="eyebrow">Practice</p>
-      <h1 class="page-title">Make the words stick</h1>
-      <p class="muted center">Spaced-repetition flashcards and AI-generated quizzes from your own wordbook.</p>
+      <p class="eyebrow" data-i18n="prac.eyebrow">Practice</p>
+      <h1 class="page-title" data-i18n="prac.title">Make the words stick</h1>
+      <p class="muted center" data-i18n="prac.sub">Spaced-repetition flashcards and AI-generated quizzes from your own wordbook.</p>
     </div>
 
     <div id="practiceHome" class="practice-modes">
       <div class="card mode-card">
         <div class="mode-icon">🃏</div>
-        <h3>Flashcards</h3>
-        <p class="muted">Review saved words with spaced repetition. Words you find hard come back sooner.</p>
+        <h3 data-i18n="prac.flash.title">Flashcards</h3>
+        <p class="muted" data-i18n="prac.flash.desc">Review saved words with spaced repetition. Words you find hard come back sooner.</p>
         <p class="hint" id="flashDueInfo"></p>
-        <button class="primary" id="startFlashBtn">Start review</button>
+        <button class="primary" id="startFlashBtn" data-i18n="prac.flash.btn">Start review</button>
       </div>
       <div class="card mode-card">
         <div class="mode-icon">🧠</div>
-        <h3>AI Quiz</h3>
-        <p class="muted">AI writes a fresh multiple-choice quiz from your saved words — meanings, synonyms and fill-in-the-blank.</p>
+        <h3 data-i18n="prac.quiz.title">AI Quiz</h3>
+        <p class="muted" data-i18n="prac.quiz.desc">AI writes a fresh multiple-choice quiz from your saved words — meanings, synonyms and fill-in-the-blank.</p>
         <p class="hint" id="quizWordsInfo"></p>
-        <button class="primary" id="startAiQuizBtn">Generate quiz</button>
+        <button class="primary" id="startAiQuizBtn" data-i18n="prac.quiz.btn">Generate quiz</button>
       </div>
     </div>
     <p class="error center" id="practiceError"></p>
@@ -199,18 +200,18 @@
         <div class="flash-face" id="flashFront"></div>
         <div class="flash-face flash-back hidden" id="flashBack"></div>
       </div>
-      <p class="hint center" id="flashHint">Click the card to flip it.</p>
+      <p class="hint center" id="flashHint" data-i18n="prac.fliphint">Click the card to flip it.</p>
       <div class="flash-grades hidden" id="flashGrades">
-        <button class="grade again" data-grade="again">Again<small>&lt; 10 min</small></button>
-        <button class="grade good" data-grade="good">Good<small>next box</small></button>
-        <button class="grade easy" data-grade="easy">Easy<small>skip a box</small></button>
+        <button class="grade again" data-grade="again"><span data-i18n="grade.again">Again</span><small data-i18n="grade.again.s">&lt; 10 min</small></button>
+        <button class="grade good" data-grade="good"><span data-i18n="grade.good">Good</span><small data-i18n="grade.good.s">next box</small></button>
+        <button class="grade easy" data-grade="easy"><span data-i18n="grade.easy">Easy</span><small data-i18n="grade.easy.s">skip a box</small></button>
       </div>
-      <div class="center"><button class="ghost" id="flashQuitBtn">End review</button></div>
+      <div class="center"><button class="ghost" id="flashQuitBtn" data-i18n="prac.end">End review</button></div>
     </div>
 
     <!-- AI quiz -->
     <div id="quizArea" class="hidden">
-      <div class="loading" id="aiQuizLoading"><div class="spinner"></div><p>Writing your quiz…</p></div>
+      <div class="loading" id="aiQuizLoading"><div class="spinner"></div><p data-i18n="prac.quiz.loading">Writing your quiz…</p></div>
       <div id="aiQuizBox" class="card center-card hidden">
         <div class="quiz-progress"><div class="quiz-bar"><div id="aiQuizBarFill"></div></div><span id="aiQuizProgress"></span></div>
         <h2 class="quiz-question" id="aiQuizQuestion"></h2>
@@ -219,11 +220,11 @@
         <button class="primary hidden" id="aiQuizNextBtn">Next →</button>
       </div>
       <div id="aiQuizResult" class="card center-card hidden">
-        <h2>Quiz complete 🎉</h2>
+        <h2 data-i18n="prac.quiz.done">Quiz complete 🎉</h2>
         <p class="big-score" id="aiQuizScore"></p>
         <div class="field-row center">
-          <button class="primary" id="aiQuizAgainBtn">New quiz</button>
-          <button class="ghost" id="aiQuizBackBtn">Back to practice</button>
+          <button class="primary" id="aiQuizAgainBtn" data-i18n="prac.quiz.new">New quiz</button>
+          <button class="ghost" id="aiQuizBackBtn" data-i18n="prac.quiz.back">Back to practice</button>
         </div>
       </div>
     </div>
@@ -232,30 +233,30 @@
   <!-- ============ WRITING COACH ============ -->
   <section id="view-coach" class="view">
     <div class="page-head">
-      <p class="eyebrow">Writing Coach</p>
-      <h1 class="page-title">Write it — get it polished</h1>
-      <p class="muted center">Write a sentence or short paragraph in English. The coach corrects it, explains every fix at your level, and shows a more natural version.</p>
+      <p class="eyebrow" data-i18n="coach.eyebrow">Writing Coach</p>
+      <h1 class="page-title" data-i18n="coach.title">Write it — get it polished</h1>
+      <p class="muted center" data-i18n="coach.sub">Write a sentence or short paragraph in English. The coach corrects it, explains every fix at your level, and shows a more natural version.</p>
     </div>
     <div class="card coach-card">
-      <textarea id="coachInput" rows="5" placeholder="Try using a word you just learned… e.g. 'Even the failure, she kept resilient and tried again.'"></textarea>
+      <textarea id="coachInput" rows="5" placeholder="Try using a word you just learned… e.g. 'Even the failure, she kept resilient and tried again.'" data-i18n-ph="coach.ph"></textarea>
       <div class="coach-actions">
         <span class="hint" id="coachWordHint"></span>
-        <button class="primary" id="coachCheckBtn">Check my writing</button>
+        <button class="primary" id="coachCheckBtn" data-i18n="coach.btn">Check my writing</button>
       </div>
     </div>
-    <div class="loading hidden" id="coachLoading"><div class="spinner"></div><p>Reading your writing…</p></div>
+    <div class="loading hidden" id="coachLoading"><div class="spinner"></div><p data-i18n="coach.loading">Reading your writing…</p></div>
     <p class="error center" id="coachError"></p>
     <div id="coachResult" class="hidden">
       <div class="card coach-block">
-        <div class="coach-score-row"><h3>Corrected version</h3><span class="score-pill" id="coachScore"></span></div>
+        <div class="coach-score-row"><h3 data-i18n="coach.corrected">Corrected version</h3><span class="score-pill" id="coachScore"></span></div>
         <p class="coach-corrected" id="coachCorrected"></p>
       </div>
       <div class="card coach-block">
-        <h3>What changed &amp; why</h3>
+        <h3 data-i18n="coach.changed">What changed &amp; why</h3>
         <ul class="coach-issues" id="coachIssues"></ul>
       </div>
       <div class="card coach-block">
-        <h3>A more natural way to say it</h3>
+        <h3 data-i18n="coach.natural">A more natural way to say it</h3>
         <p class="coach-natural" id="coachNatural"></p>
         <p class="coach-tip" id="coachTip"></p>
       </div>
@@ -265,17 +266,17 @@
   <!-- ============ AI TUTOR ============ -->
   <section id="view-tutor" class="view">
     <div class="page-head">
-      <p class="eyebrow">AI Tutor</p>
-      <h1 class="page-title">Ask anything about English</h1>
-      <p class="muted center">Grammar, word choice, nuance, examples — answers are tuned to your level.</p>
+      <p class="eyebrow" data-i18n="tutor.eyebrow">AI Tutor</p>
+      <h1 class="page-title" data-i18n="tutor.title">Ask anything about English</h1>
+      <p class="muted center" data-i18n="tutor.sub">Grammar, word choice, nuance, examples — answers are tuned to your level.</p>
     </div>
     <div class="card tutor-card">
       <div class="tutor-log" id="tutorLog">
-        <div class="chat-msg bot">Hi! I'm your English tutor. Ask me about grammar, words, or anything you read here — for example, <em>"What's the difference between 'resilient' and 'tough'?"</em></div>
+        <div class="chat-msg bot" data-i18n="tutor.greet">Hi! I'm your English tutor. Ask me about grammar, words, or anything you read here — for example, <em>"What's the difference between 'resilient' and 'tough'?"</em></div>
       </div>
       <div class="tutor-input">
-        <input type="text" id="tutorInput" placeholder="Ask a question in English…" autocomplete="off" />
-        <button class="primary" id="tutorSendBtn">Send</button>
+        <input type="text" id="tutorInput" placeholder="Ask a question in English…" data-i18n-ph="tutor.ph" autocomplete="off" />
+        <button class="primary" id="tutorSendBtn" data-i18n="tutor.send">Send</button>
       </div>
     </div>
   </section>
@@ -283,16 +284,16 @@
   <!-- ============ MY WORDBOOK ============ -->
   <section id="view-mybook" class="view">
     <div class="page-head">
-      <p class="eyebrow">My Wordbook</p>
-      <h1 class="page-title">Everything you've looked up</h1>
-      <p class="muted center">Saved automatically, ready to review any time.</p>
+      <p class="eyebrow" data-i18n="book.eyebrow">My Wordbook</p>
+      <h1 class="page-title" data-i18n="book.title">Everything you've looked up</h1>
+      <p class="muted center" data-i18n="book.sub">Saved automatically, ready to review any time.</p>
     </div>
     <div class="tabs" id="bookTabs">
-      <button class="tab active" data-tab="words">Wordbook</button>
-      <button class="tab" data-tab="etymology">Etymology</button>
-      <button class="tab" data-tab="idioms">Idioms</button>
-      <button class="tab" data-tab="synonyms">Synonyms</button>
-      <button class="tab" data-tab="sentences">Similar Sentences</button>
+      <button class="tab active" data-tab="words" data-i18n="tab.words">Wordbook</button>
+      <button class="tab" data-tab="etymology" data-i18n="tab.ety">Etymology</button>
+      <button class="tab" data-tab="idioms" data-i18n="tab.idioms">Idioms</button>
+      <button class="tab" data-tab="synonyms" data-i18n="tab.syn">Synonyms</button>
+      <button class="tab" data-tab="sentences" data-i18n="tab.sents">Similar Sentences</button>
     </div>
     <div id="bookContent" class="book-content"></div>
   </section>
@@ -300,26 +301,26 @@
   <!-- ============ SETTINGS ============ -->
   <section id="view-settings" class="view">
     <div class="card center-card">
-      <p class="eyebrow">Settings</p>
-      <h1>Your setup</h1>
+      <p class="eyebrow" data-i18n="set.eyebrow">Settings</p>
+      <h1 data-i18n="set.title">Your setup</h1>
       <label class="field-label">OpenAI API key</label>
       <div class="field-row">
         <input type="password" id="settingsKeyInput" placeholder="sk-..." autocomplete="off" />
-        <button class="primary" id="settingsSaveKeyBtn">Update key</button>
+        <button class="primary" id="settingsSaveKeyBtn" data-i18n="set.update">Update key</button>
       </div>
-      <label class="field-label">Text model</label>
+      <label class="field-label" data-i18n="set.text">Text model</label>
       <input type="text" id="textModelInput" />
-      <label class="field-label">Image model</label>
+      <label class="field-label" data-i18n="set.image">Image model</label>
       <input type="text" id="imageModelInput" />
       <div class="field-row">
-        <button class="ghost" id="detectModelsBtn">Auto-detect best models</button>
-        <button class="ghost" id="testApiBtn">Test connection</button>
+        <button class="ghost" id="detectModelsBtn" data-i18n="set.detect">Auto-detect best models</button>
+        <button class="ghost" id="testApiBtn" data-i18n="set.test">Test connection</button>
       </div>
-      <p class="hint">If you see “model not found” errors, click <strong>Auto-detect best models</strong> — it asks Google which models your key can actually use and switches to the newest ones.</p>
+      <p class="hint" data-i18n="set.hint">If you see “model not found” errors, click <strong>Auto-detect best models</strong> — it asks which models your key can actually use and switches to the newest ones.</p>
       <hr />
       <div class="field-row">
-        <button class="ghost" id="retakeTestBtn">Retake level test</button>
-        <button class="ghost danger" id="clearBookBtn">Delete all saved words</button>
+        <button class="ghost" id="retakeTestBtn" data-i18n="set.retake">Retake level test</button>
+        <button class="ghost danger" id="clearBookBtn" data-i18n="set.clear">Delete all saved words</button>
       </div>
       <p class="hint" id="settingsMsg"></p>
     </div>
@@ -329,8 +330,8 @@
 
 <footer class="foot">
   <div class="foot-inner">
-    <span><strong>EngWord</strong> · 핀테크놀러지 AI 교육 · your personal English dictionary &amp; tutor</span>
-    <span>Explanations in English only · pictures &amp; quizzes by OpenAI · your key never leaves this browser</span>
+    <span data-i18n="foot.1"><strong>EngWord</strong> · 핀테크놀러지 AI 교육 · your personal English dictionary &amp; tutor</span>
+    <span data-i18n="foot.2">Explanations in English only · pictures &amp; quizzes by OpenAI · your key never leaves this browser</span>
   </div>
 </footer>
 

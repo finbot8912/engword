@@ -16,6 +16,7 @@ const LS = {
   TEXT_MODEL: "engword_text_model",
   IMAGE_MODEL: "engword_image_model",
   WOTD: "engword_wotd",
+  LANG: "engword_lang",
 };
 
 // OpenAI model ids. If a key can't use them, the 404 auto-retry below
@@ -51,6 +52,8 @@ const state = {
   aiQuizScore: 0,
   // tutor
   tutorHistory: [],
+  // UI language ("en" | "ko")
+  lang: localStorage.getItem(LS.LANG) || "en",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -90,6 +93,170 @@ const LEVEL_DESC = {
 };
 
 /* ============================================================
+   UI language (한/영 toggle) — dictionary content stays English
+   ============================================================ */
+const I18N = {
+  // English values mirror the HTML defaults; Korean swaps the UI chrome only.
+  ko: {
+    "nav.dictionary": "사전", "nav.practice": "연습", "nav.writing": "작문&nbsp;",
+    "nav.coach": "코치", "nav.ai": "AI&nbsp;", "nav.tutor": "튜터",
+    "nav.wordbook": "단어장", "nav.settings": "설정",
+
+    "ob.title": "내 레벨에 딱 맞는<br /><em>영어 단어 학습.</em>",
+    "ob.sub": "콜린스식 정의 · 롱맨식 동의어 · AI 그림 · 나만의 단어장 · 작문 코치 &amp; 튜터",
+    "ob.getstarted": "시작하기",
+    "ob.keyinfo": "<strong>OpenAI API 키</strong>를 붙여넣으세요. 키는 이 브라우저에만 저장되며 OpenAI API로만 전송됩니다.",
+    "ob.savekey": "키 저장하고 시작",
+    "ob.keyhint": "키 발급: <a href=\"https://platform.openai.com/api-keys\" target=\"_blank\" rel=\"noopener\">platform.openai.com/api-keys</a>",
+
+    "test.eyebrow": "레벨 테스트", "test.title": "빠른 레벨 확인",
+    "test.desc": "몇 가지 짧은 질문에 답하면 설명이 내 레벨(A1–C2)에 맞춰집니다.",
+    "test.skiphint": "<kbd>h</kbd> 키를 누르면 언제든 테스트를 건너뛰고 레벨 없이 진행합니다.",
+    "test.yourlevel": "내 레벨:", "test.start": "단어 검색 시작 →", "test.skip": "건너뛰기 (h)",
+
+    "hero.title": "어떤 단어가 궁금하세요?",
+    "hero.sub1": "내 레벨", "hero.sub2": "에 맞춘 쉬운 영어 설명 — 동의어, 어원, 그림과 함께.",
+    "search.ph": "영어 단어를 입력하세요… 예: resilient", "search.btn": "검색",
+    "wotd.eyebrow": "오늘의 단어",
+    "wotd.teaser.default": "매일 내 레벨에 맞는 새 단어를 골라드립니다.",
+    "wotd.reveal": "오늘의 단어 보기", "wotd.open": "사전에서 열기 →", "wotd.picking": "단어를 고르는 중…",
+    "lookup.loading": "“{w}” 찾는 중…",
+
+    "entry.saved": "★ 단어장에 저장됨",
+    "entry.def": "정의 <span class=\"tag\">Collins 스타일</span>",
+    "entry.syn": "동의어 <span class=\"tag\">Longman 스타일</span>",
+    "entry.origin": "어원 <span class=\"tag\">Etymology</span>",
+    "entry.idioms": "숙어 &amp; 구문", "entry.sents": "유사 문장",
+    "entry.picture": "그림", "entry.keep": "이어서 학습",
+    "entry.cta.flash": "🃏 플래시카드 복습", "entry.cta.coach": "✍️ 문장으로 써보기", "entry.cta.tutor": "💬 AI 튜터에게 질문",
+    "entry.imghint": "그림을 누르면 영어와 한국어 설명이 나옵니다.",
+    "entry.back": "← 그림으로", "entry.drawing": "단어를 그리는 중…", "entry.imgfail": "그림을 그리지 못했습니다.",
+
+    "prac.eyebrow": "연습", "prac.title": "단어를 완전히 내 것으로",
+    "prac.sub": "간격 반복 플래시카드와 내 단어장 기반 AI 퀴즈로 복습합니다.",
+    "prac.flash.title": "플래시카드",
+    "prac.flash.desc": "저장한 단어를 간격 반복으로 복습합니다. 어려운 단어는 더 자주 나옵니다.",
+    "prac.flash.btn": "복습 시작",
+    "prac.quiz.title": "AI 퀴즈",
+    "prac.quiz.desc": "저장한 단어로 AI가 객관식 퀴즈를 출제합니다 — 뜻, 동의어, 빈칸 채우기.",
+    "prac.quiz.btn": "퀴즈 만들기",
+    "prac.fliphint": "카드를 누르면 뒤집힙니다.", "prac.end": "복습 종료",
+    "prac.due": "저장한 단어 {total}개 중 {due}개가 복습할 차례입니다.",
+    "prac.savefirst": "먼저 사전에서 단어를 저장하세요.",
+    "prac.quizfrom": "최근 단어 {n}개로 퀴즈를 만듭니다.",
+    "prac.card": "카드 {i} / {n}",
+    "prac.empty": "단어장이 비어 있습니다 — 먼저 단어를 검색해보세요.",
+    "grade.again": "다시", "grade.again.s": "10분 후", "grade.good": "알맞음",
+    "grade.good.s": "다음 단계", "grade.easy": "쉬움", "grade.easy.s": "단계 건너뜀",
+    "prac.quiz.loading": "퀴즈를 만드는 중…", "prac.quiz.done": "퀴즈 완료 🎉",
+    "prac.quiz.new": "새 퀴즈", "prac.quiz.back": "연습으로",
+    "quiz.next": "다음 →", "quiz.result": "결과 보기 →",
+    "quiz.correct": "✓ 정답! ", "quiz.wrong": "✗ 아쉽네요. ",
+
+    "coach.eyebrow": "작문 코치", "coach.title": "쓰면 다듬어드립니다",
+    "coach.sub": "영어로 문장이나 짧은 글을 써보세요. 코치가 교정하고, 수정 이유를 내 레벨에 맞게 설명하고, 더 자연스러운 표현을 알려줍니다.",
+    "coach.ph": "배운 단어로 문장을 만들어보세요… 예: 'Even the failure, she kept resilient and tried again.'",
+    "coach.btn": "내 글 검사", "coach.loading": "글을 읽는 중…",
+    "coach.corrected": "교정본", "coach.changed": "무엇이 왜 바뀌었나", "coach.natural": "더 자연스러운 표현",
+    "coach.perfect": "고칠 게 없어요 — 훌륭합니다! 🎉",
+    "coach.tryword": "“{w}” 단어로 문장을 만들어보세요.",
+
+    "tutor.eyebrow": "AI 튜터", "tutor.title": "영어에 관해 무엇이든 물어보세요",
+    "tutor.sub": "문법, 단어 선택, 뉘앙스, 예문 — 내 레벨에 맞춰 답해드립니다.",
+    "tutor.greet": "안녕하세요! 영어 튜터예요. 문법, 단어, 뉘앙스 등 무엇이든 물어보세요 — 예: <em>\"What's the difference between 'resilient' and 'tough'?\"</em>",
+    "tutor.ph": "영어로 질문해보세요…", "tutor.send": "보내기", "tutor.thinking": "생각 중…",
+
+    "book.eyebrow": "내 단어장", "book.title": "내가 찾아본 모든 단어",
+    "book.sub": "자동으로 저장되어 언제든 복습할 수 있습니다.",
+    "tab.words": "단어집", "tab.ety": "어원", "tab.idioms": "숙어",
+    "tab.syn": "동의어", "tab.sents": "유사 문장",
+    "book.empty": "단어장이 비어 있습니다.<br>사전에서 단어를 검색하면 자동으로 저장됩니다.",
+    "book.delete": "삭제",
+    "book.none.ety": "저장된 어원이 없습니다.", "book.none.idioms": "저장된 숙어가 없습니다.",
+    "book.none.syn": "저장된 동의어가 없습니다.", "book.none.sents": "저장된 문장이 없습니다.",
+
+    "set.eyebrow": "설정", "set.title": "내 설정",
+    "set.update": "키 변경", "set.text": "텍스트 모델", "set.image": "이미지 모델",
+    "set.detect": "모델 자동 감지", "set.test": "연결 테스트",
+    "set.hint": "“model not found” 에러가 나면 <strong>모델 자동 감지</strong>를 누르세요 — 내 키로 쓸 수 있는 최신 모델로 자동 전환합니다.",
+    "set.retake": "레벨 테스트 다시 보기", "set.clear": "저장된 단어 모두 삭제",
+    "set.keyok": "API 키가 변경되었습니다.", "set.keybad": "올바른 API 키가 아닌 것 같습니다.",
+    "set.textok": "텍스트 모델이 변경되었습니다.", "set.imageok": "이미지 모델이 변경되었습니다.",
+    "set.cleared": "단어장을 비웠습니다.",
+    "set.confirmclear": "저장된 단어를 모두 삭제할까요? 되돌릴 수 없습니다.",
+    "level.label": "레벨 ",
+
+    "foot.1": "<strong>EngWord</strong> · 핀테크놀러지 AI 교육 · 나만의 영어 사전 &amp; 튜터",
+    "foot.2": "설명은 영어로만 · 그림과 퀴즈는 OpenAI · 키는 브라우저 밖으로 나가지 않습니다",
+  },
+  en: {
+    "lookup.loading": "Looking up “{w}”…",
+    "entry.drawing": "Drawing the word…", "entry.imgfail": "Could not draw the picture.",
+    "wotd.teaser.default": "A fresh word picked for your level, every day.",
+    "wotd.reveal": "Reveal today's word", "wotd.open": "Open in dictionary →",
+    "wotd.picking": "Picking a word for you…",
+    "prac.due": "{due} of {total} saved words are due for review.",
+    "prac.savefirst": "Save some words in the Dictionary first.",
+    "prac.quizfrom": "Quiz will be built from your {n} most recent words.",
+    "prac.card": "Card {i} of {n}",
+    "prac.empty": "Your wordbook is empty — look up some words first.",
+    "quiz.next": "Next →", "quiz.result": "See result →",
+    "quiz.correct": "✓ Correct! ", "quiz.wrong": "✗ Not quite. ",
+    "coach.perfect": "Nothing to fix — great job! 🎉",
+    "coach.tryword": "Try writing a sentence with “{w}”.",
+    "tutor.thinking": "Thinking…",
+    "book.empty": "Your wordbook is empty.<br>Look up a word in the Dictionary and it will be saved here automatically.",
+    "book.delete": "delete",
+    "book.none.ety": "No etymology saved.", "book.none.idioms": "No idioms saved.",
+    "book.none.syn": "No synonyms saved.", "book.none.sents": "No sentences saved.",
+    "set.keyok": "API key updated.", "set.keybad": "That doesn't look like a valid API key.",
+    "set.textok": "Text model updated.", "set.imageok": "Image model updated.",
+    "set.cleared": "Wordbook cleared.",
+    "set.confirmclear": "Delete ALL saved words? This cannot be undone.",
+    "level.label": "Level ",
+  },
+};
+
+// Default English text lives in the HTML; remember it so we can restore it.
+const I18N_DEFAULTS = {};
+document.querySelectorAll("[data-i18n]").forEach((el) => {
+  I18N_DEFAULTS[el.dataset.i18n] = el.innerHTML;
+});
+document.querySelectorAll("[data-i18n-ph]").forEach((el) => {
+  I18N_DEFAULTS["ph:" + el.dataset.i18nPh] = el.placeholder;
+});
+
+function t(key, vars) {
+  let s = I18N[state.lang]?.[key] ?? I18N.en[key] ?? I18N_DEFAULTS[key] ?? key;
+  if (vars) for (const k in vars) s = s.replaceAll(`{${k}}`, vars[k]);
+  return s;
+}
+
+function applyLang() {
+  document.documentElement.lang = state.lang === "ko" ? "ko" : "en";
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const k = el.dataset.i18n;
+    el.innerHTML = state.lang === "ko" ? (I18N.ko[k] ?? I18N_DEFAULTS[k]) : (I18N_DEFAULTS[k] ?? I18N.en[k] ?? "");
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach((el) => {
+    const k = el.dataset.i18nPh;
+    el.placeholder = state.lang === "ko" ? (I18N.ko[k] ?? I18N_DEFAULTS["ph:" + k]) : I18N_DEFAULTS["ph:" + k];
+  });
+  $("langToggle").textContent = state.lang === "ko" ? "EN" : "한";
+  updateLevelBadge();
+  // refresh dynamic texts on the visible view
+  if (state.currentView === "lookup") renderWotdCard();
+  if (state.currentView === "practice") renderPracticeHome();
+  if (state.currentView === "mybook") renderBook(currentTab);
+}
+
+$("langToggle").addEventListener("click", () => {
+  state.lang = state.lang === "ko" ? "en" : "ko";
+  localStorage.setItem(LS.LANG, state.lang);
+  applyLang();
+});
+
+/* ============================================================
    View switching
    ============================================================ */
 function show(view) {
@@ -106,11 +273,12 @@ function show(view) {
 
 function updateLevelBadge() {
   const lv = state.level;
-  $("levelBadge").textContent = "Level " + (lv ? (lv === "ANY" ? "·" : lv) : "—");
+  $("levelBadge").textContent = t("level.label") + (lv ? (lv === "ANY" ? "·" : lv) : "—");
   $("levelInline").textContent = lv && lv !== "ANY" ? ` (${lv})` : "";
 }
 
 function boot() {
+  applyLang();
   updateLevelBadge();
   if (!state.apiKey) show("apikey");
   else if (!state.level) startQuiz();
@@ -400,7 +568,7 @@ async function lookup(word) {
   $("lookupError").textContent = "";
   $("entry").classList.add("hidden");
   $("loading").classList.remove("hidden");
-  $("loadingMsg").textContent = `Looking up “${word}”…`;
+  $("loadingMsg").textContent = t("lookup.loading", { w: word });
   $("lookupBtn").disabled = true;
 
   try {
@@ -421,7 +589,7 @@ async function lookup(word) {
 
 async function loadEntryImage(entry) {
   $("imgLoading").classList.remove("hidden");
-  $("imgLoading").innerHTML = `<div class="spinner small"></div><p>Drawing the word…</p>`;
+  $("imgLoading").innerHTML = `<div class="spinner small"></div><p>${t("entry.drawing")}</p>`;
   $("entryImg").classList.add("hidden");
   $("imgReveal").classList.add("hidden");
   try {
@@ -434,7 +602,7 @@ async function loadEntryImage(entry) {
     }
   } catch (err) {
     if (state.currentEntry === entry) {
-      $("imgLoading").innerHTML = `<p>Could not draw the picture.<br><span class="error">${escapeHtml(err.message || String(err))}</span></p>`;
+      $("imgLoading").innerHTML = `<p>${t("entry.imgfail")}<br><span class="error">${escapeHtml(err.message || String(err))}</span></p>`;
     }
   }
 }
@@ -505,7 +673,7 @@ $("tutorCta").addEventListener("click", () => {
 $("coachCta").addEventListener("click", () => {
   show("coach");
   if (state.currentEntry) {
-    $("coachWordHint").textContent = `Try writing a sentence with “${state.currentEntry.word}”.`;
+    $("coachWordHint").textContent = t("coach.tryword", { w: state.currentEntry.word });
   }
   $("coachInput").focus();
 });
@@ -524,11 +692,11 @@ function renderWotdCard() {
   if (c && c.date === todayStr()) {
     $("wotdWord").textContent = c.word;
     $("wotdTeaser").textContent = c.teaser;
-    $("wotdBtn").textContent = "Open in dictionary →";
+    $("wotdBtn").textContent = t("wotd.open");
   } else {
     $("wotdWord").textContent = "—";
-    $("wotdTeaser").textContent = "A fresh word picked for your level, every day.";
-    $("wotdBtn").textContent = "Reveal today's word";
+    $("wotdTeaser").textContent = t("wotd.teaser.default");
+    $("wotdBtn").textContent = t("wotd.reveal");
   }
 }
 
@@ -540,7 +708,7 @@ $("wotdBtn").addEventListener("click", async () => {
     return;
   }
   $("wotdBtn").disabled = true;
-  $("wotdTeaser").textContent = "Picking a word for you…";
+  $("wotdTeaser").textContent = t("wotd.picking");
   try {
     const known = Object.keys(getBook()).slice(0, 40).join(", ") || "none";
     const data = await aiText(`Pick ONE interesting, genuinely useful English word for a learner.
@@ -597,7 +765,7 @@ function renderBook(tab) {
   const box = $("bookContent");
   const entries = bookEntries();
   if (!entries.length) {
-    box.innerHTML = `<div class="book-empty">Your wordbook is empty.<br>Look up a word in the Dictionary and it will be saved here automatically.</div>`;
+    box.innerHTML = `<div class="book-empty">${t("book.empty")}</div>`;
     return;
   }
 
@@ -607,15 +775,15 @@ function renderBook(tab) {
       const d = e.definitions?.[0];
       body = d ? `${escapeHtml(d.definition)}${d.example ? ` <em>“${escapeHtml(d.example)}”</em>` : ""}` : "";
     } else if (tab === "etymology") {
-      body = escapeHtml(e.etymology || "No etymology saved.");
+      body = escapeHtml(e.etymology || t("book.none.ety"));
     } else if (tab === "idioms") {
       body = (e.idioms || []).map((i) =>
-        `<div><strong>${escapeHtml(i.phrase)}</strong> — ${escapeHtml(i.meaning)}</div>`).join("") || "No idioms saved.";
+        `<div><strong>${escapeHtml(i.phrase)}</strong> — ${escapeHtml(i.meaning)}</div>`).join("") || t("book.none.idioms");
     } else if (tab === "synonyms") {
       body = (e.synonyms || []).map((s) =>
-        `<div><strong>${escapeHtml(s.word)}</strong> — ${escapeHtml(s.note)}</div>`).join("") || "No synonyms saved.";
+        `<div><strong>${escapeHtml(s.word)}</strong> — ${escapeHtml(s.note)}</div>`).join("") || t("book.none.syn");
     } else if (tab === "sentences") {
-      body = (e.similarSentences || []).map((s) => `<div>• ${escapeHtml(s)}</div>`).join("") || "No sentences saved.";
+      body = (e.similarSentences || []).map((s) => `<div>• ${escapeHtml(s)}</div>`).join("") || t("book.none.sents");
     }
     const date = e.savedAt ? new Date(e.savedAt).toLocaleDateString() : "";
     return `
@@ -623,7 +791,7 @@ function renderBook(tab) {
         <div class="bi-head">
           <h3 data-word="${escapeHtml(key)}">${escapeHtml(e.word)}</h3>
           <span class="bi-meta">${escapeHtml(e.partOfSpeech || "")} · ${escapeHtml(e.level || "")} · ${date}</span>
-          <button class="bi-del" data-del="${escapeHtml(key)}">delete</button>
+          <button class="bi-del" data-del="${escapeHtml(key)}">${t("book.delete")}</button>
         </div>
         <div class="bi-body">${body}</div>
       </div>`;
@@ -666,18 +834,18 @@ function renderPracticeHome() {
   const total = bookEntries().length;
   const due = dueEntries().length;
   $("flashDueInfo").textContent = total
-    ? `${due} of ${total} saved words are due for review.`
-    : "Save some words in the Dictionary first.";
+    ? t("prac.due", { due, total })
+    : t("prac.savefirst");
   $("quizWordsInfo").textContent = total
-    ? `Quiz will be built from your ${Math.min(total, 8)} most recent words.`
-    : "Save some words in the Dictionary first.";
+    ? t("prac.quizfrom", { n: Math.min(total, 8) })
+    : t("prac.savefirst");
 }
 
 function startFlashcards() {
   const due = dueEntries();
   const deck = (due.length ? due : bookEntries()).map(([key, e]) => ({ key, e }));
   if (!deck.length) {
-    $("practiceError").textContent = "Your wordbook is empty — look up some words first.";
+    $("practiceError").textContent = t("prac.empty");
     return;
   }
   // shuffle
@@ -696,7 +864,7 @@ function renderFlashcard() {
   const item = state.flashDeck[state.flashIndex];
   if (!item) { endFlashcards(); return; }
   const e = item.e;
-  $("flashCount").textContent = `Card ${state.flashIndex + 1} of ${state.flashDeck.length}`;
+  $("flashCount").textContent = t("prac.card", { i: state.flashIndex + 1, n: state.flashDeck.length });
   $("flashFront").innerHTML = `<p class="fc-word">${escapeHtml(e.word)}</p><p class="fc-pos">${escapeHtml(e.partOfSpeech || "")}</p>`;
   const d = e.definitions?.[0];
   $("flashBack").innerHTML = `
@@ -757,7 +925,7 @@ $("flashQuitBtn").addEventListener("click", endFlashcards);
 async function startAiQuiz() {
   const entries = bookEntries().slice(0, 8);
   if (!entries.length) {
-    $("practiceError").textContent = "Your wordbook is empty — look up some words first.";
+    $("practiceError").textContent = t("prac.empty");
     return;
   }
   $("practiceHome").classList.add("hidden");
@@ -828,10 +996,10 @@ function answerAiQuiz(idx, btn) {
     btn.classList.add("wrong");
   }
   const fb = $("aiQuizFeedback");
-  fb.textContent = (idx === q.answerIndex ? "✓ Correct! " : "✗ Not quite. ") + (q.explanation || "");
+  fb.textContent = (idx === q.answerIndex ? t("quiz.correct") : t("quiz.wrong")) + (q.explanation || "");
   fb.classList.remove("hidden");
   $("aiQuizNextBtn").classList.remove("hidden");
-  $("aiQuizNextBtn").textContent = state.aiQuizIndex + 1 < state.aiQuiz.length ? "Next →" : "See result →";
+  $("aiQuizNextBtn").textContent = state.aiQuizIndex + 1 < state.aiQuiz.length ? t("quiz.next") : t("quiz.result");
 }
 
 $("aiQuizNextBtn").addEventListener("click", () => {
@@ -888,7 +1056,7 @@ Return ONLY JSON:
       ? data.issues.map((i) => `
           <li><span class="ci-from">${escapeHtml(i.from)}</span> → <span class="ci-to">${escapeHtml(i.to)}</span><br>
           <span class="muted">${escapeHtml(i.why)}</span></li>`).join("")
-      : `<li>Nothing to fix — great job! 🎉</li>`;
+      : `<li>${t("coach.perfect")}</li>`;
     $("coachNatural").textContent = data.natural || "";
     $("coachTip").textContent = data.tip ? "💡 " + data.tip : "";
     $("coachResult").classList.remove("hidden");
@@ -938,7 +1106,7 @@ async function tutorSend() {
 
   $("tutorInput").value = "";
   appendChat("user", renderMarkdownLite(text));
-  const typing = appendChat("bot typing", "Thinking…");
+  const typing = appendChat("bot typing", t("tutor.thinking"));
   $("tutorSendBtn").disabled = true;
 
   // First user turn carries the tutor instructions.
@@ -976,18 +1144,18 @@ function fillSettings() {
 }
 
 $("settingsSaveKeyBtn").addEventListener("click", () => {
-  if (saveKey($("settingsKeyInput").value)) $("settingsMsg").textContent = "API key updated.";
-  else $("settingsMsg").textContent = "That doesn't look like a valid API key.";
+  if (saveKey($("settingsKeyInput").value)) $("settingsMsg").textContent = t("set.keyok");
+  else $("settingsMsg").textContent = t("set.keybad");
 });
 $("textModelInput").addEventListener("change", () => {
   state.textModel = $("textModelInput").value.trim() || DEFAULT_TEXT_MODEL;
   localStorage.setItem(LS.TEXT_MODEL, state.textModel);
-  $("settingsMsg").textContent = "Text model updated.";
+  $("settingsMsg").textContent = t("set.textok");
 });
 $("imageModelInput").addEventListener("change", () => {
   state.imageModel = $("imageModelInput").value.trim() || DEFAULT_IMAGE_MODEL;
   localStorage.setItem(LS.IMAGE_MODEL, state.imageModel);
-  $("settingsMsg").textContent = "Image model updated.";
+  $("settingsMsg").textContent = t("set.imageok");
 });
 $("detectModelsBtn").addEventListener("click", async () => {
   $("settingsMsg").textContent = "Checking which models your key can use…";
@@ -1013,9 +1181,9 @@ $("testApiBtn").addEventListener("click", async () => {
 
 $("retakeTestBtn").addEventListener("click", startQuiz);
 $("clearBookBtn").addEventListener("click", () => {
-  if (confirm("Delete ALL saved words? This cannot be undone.")) {
+  if (confirm(t("set.confirmclear"))) {
     localStorage.removeItem(LS.BOOK);
-    $("settingsMsg").textContent = "Wordbook cleared.";
+    $("settingsMsg").textContent = t("set.cleared");
   }
 });
 
