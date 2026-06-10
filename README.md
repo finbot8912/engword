@@ -1,7 +1,7 @@
 # EngWord — Smart English Dictionary & Tutor
 
 A professional, personal English learner's dictionary and study suite powered by the
-Google Gemini API. No build step — plain HTML/CSS/JS.
+OpenAI API. No build step — plain HTML/CSS/JS.
 
 ## Dictionary
 
@@ -12,8 +12,8 @@ Google Gemini API. No build step — plain HTML/CSS/JS.
 - **Longman-style synonyms** — each synonym comes with a nuance note and an example.
 - **Etymology, idioms, and similar sentences** for every word.
 - **English-only explanations** — Korean never appears in the entry itself.
-- **AI picture for every word** (`gemini-3.1-flash-image`). **Click the picture** to
-  reveal the meaning in both **English and Korean**.
+- **AI picture for every word** (`gpt-image-1`, with automatic DALL·E fallback).
+  **Click the picture** to reveal the meaning in both **English and Korean**.
 - **Listen** — browser text-to-speech pronunciation for headwords and flashcards.
 - **Word of the Day** — one level-appropriate new word daily, cached locally.
 
@@ -21,7 +21,7 @@ Google Gemini API. No build step — plain HTML/CSS/JS.
 
 - **Practice → Flashcards** — spaced-repetition review (Leitner boxes: 10 min / 1 / 3 / 7 / 16 days)
   of your saved words; grade yourself Again / Good / Easy.
-- **Practice → AI Quiz** — Gemini writes a fresh multiple-choice quiz from your own
+- **Practice → AI Quiz** — AI writes a fresh multiple-choice quiz from your own
   wordbook (meanings, synonyms, fill-in-the-blank) with explanations per answer.
 - **Writing Coach** — paste or write English text; get a corrected version, every fix
   explained at your level, a 1–10 naturalness score, a native-sounding rewrite and a
@@ -33,9 +33,9 @@ Google Gemini API. No build step — plain HTML/CSS/JS.
 
 ## Models & API key
 
-- Bring your own Gemini API key (free at https://aistudio.google.com/apikey). It is
-  stored only in your browser and sent only to Google's API.
-- Text model: **`gemini-3.1-flash-lite`** (default) · Image model: **`gemini-3.1-flash-image`**.
+- Bring your own OpenAI API key (https://platform.openai.com/api-keys). It is
+  stored only in your browser and sent only to OpenAI's API.
+- Text model: **`gpt-5-mini`** (default) · Image model: **`gpt-image-1`**.
   Both can be changed in Settings.
 
 ## Run it
@@ -53,4 +53,4 @@ or simply open `index.html` in a browser.
 |------|---------|
 | `index.html` | All views: onboarding, level test, dictionary, practice, coach, tutor, wordbook, settings |
 | `styles.css` | Full design system (Inter + Source Serif 4, indigo theme) |
-| `app.js` | Quiz logic, Gemini calls, SRS flashcards, AI quiz, coach, tutor, wordbook storage |
+| `app.js` | Quiz logic, OpenAI calls, SRS flashcards, AI quiz, coach, tutor, wordbook storage |

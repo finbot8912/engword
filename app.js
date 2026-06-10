@@ -1,5 +1,5 @@
 /* ============================================================
-   EngWord — leveled English dictionary & study suite (Gemini)
+   EngWord — leveled English dictionary & study suite (OpenAI)
    - CEFR level quiz (press "h" on the test to skip)
    - Collins-style definitions, Longman-style synonyms, English only
    - AI picture per word; click reveals English + Korean meaning
@@ -18,18 +18,20 @@ const LS = {
   WOTD: "engword_wotd",
 };
 
-// Official model ids. If a key can't use them, the 404 auto-retry below
+// OpenAI model ids. If a key can't use them, the 404 auto-retry below
 // falls back to whatever models the account actually has.
-const DEFAULT_TEXT_MODEL = "gemini-3.1-flash-lite";
-const DEFAULT_IMAGE_MODEL = "gemini-3.1-flash-image";
-const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const DEFAULT_TEXT_MODEL = "gpt-5-mini";
+const DEFAULT_IMAGE_MODEL = "gpt-image-1";
+const API_BASE = "https://api.openai.com/v1";
 
-// One-time reset of model ids stored by older versions of this app,
-// so the new official defaults above take effect.
-if (localStorage.getItem("engword_model_v") !== "2") {
+// One-time migration from the Gemini version of this app: clear stored
+// Gemini model ids and a stored Gemini key so OpenAI defaults take effect.
+if (localStorage.getItem("engword_model_v") !== "3") {
   localStorage.removeItem(LS.TEXT_MODEL);
   localStorage.removeItem(LS.IMAGE_MODEL);
-  localStorage.setItem("engword_model_v", "2");
+  const oldKey = localStorage.getItem(LS.KEY) || "";
+  if (oldKey.startsWith("AIza")) localStorage.removeItem(LS.KEY); // Gemini key
+  localStorage.setItem("engword_model_v", "3");
 }
 
 const state = {
@@ -205,119 +207,115 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* ============================================================
-   Gemini calls — with model auto-detection & 404 auto-retry
+   OpenAI calls — with model auto-detection & 404 auto-retry
    ============================================================ */
+function openaiFetch(path, body) {
+  return fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${state.apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 async function listModels() {
-  const res = await fetch(`${API_BASE}?key=${encodeURIComponent(state.apiKey)}&pageSize=200`);
+  const res = await fetch(`${API_BASE}/models`, {
+    headers: { Authorization: `Bearer ${state.apiKey}` },
+  });
   if (!res.ok) throw new Error(await apiErrorMessage(res));
   const data = await res.json();
-  return (data.models || [])
-    .map((m) => ({
-      id: (m.name || "").replace(/^models\//, ""),
-      methods: m.supportedGenerationMethods || [],
-    }))
-    .filter((m) => m.methods.includes("generateContent"));
+  return (data.data || []).map((m) => m.id);
 }
 
 function modelVersion(id) {
-  const m = id.match(/gemini-(\d+(?:\.\d+)?)/);
+  const m = id.match(/gpt-(\d+(?:\.\d+)?)/);
   return m ? parseFloat(m[1]) : 0;
 }
 
-function pickTextModel(models) {
-  const candidates = models.filter((m) =>
-    !/image|imagen|tts|audio|embed|live|veo|robotics|computer-use|aqa/.test(m.id));
-  const score = (m) =>
-    modelVersion(m.id) * 100 +
-    (/flash-lite/.test(m.id) ? 20 : /flash/.test(m.id) ? 10 : 0) -
-    (/preview|exp/.test(m.id) ? 1 : 0);
-  return candidates.sort((a, b) => score(b) - score(a))[0]?.id;
+function pickTextModel(ids) {
+  const candidates = ids.filter((id) =>
+    /^gpt-/.test(id) &&
+    !/image|dall-e|audio|realtime|tts|whisper|embed|moderation|transcribe|search|sora|instruct/.test(id));
+  const score = (id) =>
+    modelVersion(id) * 100 +
+    (/mini/.test(id) ? 20 : 0) + (/nano/.test(id) ? 15 : 0) -
+    (/preview|chat-latest|\d{4}/.test(id) ? 1 : 0); // prefer stable, undated aliases
+  return candidates.sort((a, b) => score(b) - score(a))[0];
 }
 
-function pickImageModel(models) {
-  const candidates = models.filter((m) => /image/.test(m.id) && !/imagen|veo/.test(m.id));
-  const score = (m) =>
-    modelVersion(m.id) * 100 +
-    (/flash-image/.test(m.id) ? 10 : 0) -
-    (/preview|exp/.test(m.id) ? 1 : 0);
-  return candidates.sort((a, b) => score(b) - score(a))[0]?.id;
+function pickImageModel(ids) {
+  const candidates = ids.filter((id) => /^(gpt-image|dall-e)/.test(id));
+  const score = (id) =>
+    (/^gpt-image/.test(id) ? 1000 : 0) + modelVersion(id.replace("gpt-image", "gpt")) +
+    (/dall-e-3/.test(id) ? 500 : /dall-e/.test(id) ? 100 : 0) -
+    (/preview|\d{4}/.test(id) ? 1 : 0);
+  return candidates.sort((a, b) => score(b) - score(a))[0];
 }
 
 // Query the account's real model list and switch to the best available ones.
 async function autoDetectModels() {
-  const models = await listModels();
-  const text = pickTextModel(models);
-  const image = pickImageModel(models);
+  const ids = await listModels();
+  const text = pickTextModel(ids);
+  const image = pickImageModel(ids);
   if (text) { state.textModel = text; localStorage.setItem(LS.TEXT_MODEL, text); }
   if (image) { state.imageModel = image; localStorage.setItem(LS.IMAGE_MODEL, image); }
-  return { text, image, count: models.length };
+  return { text, image, count: ids.length };
 }
 
-// POST :generateContent; on 404 (bad model id) auto-detect models and retry once.
-async function postGenerate(kind, body) {
-  const url = (model) =>
-    `${API_BASE}/${model}:generateContent?key=${encodeURIComponent(state.apiKey)}`;
-  const opts = {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  };
-  const model = kind === "image" ? state.imageModel : state.textModel;
-  let res = await fetch(url(model), opts);
+// Chat completion; on 404 (model not on this account) auto-detect and retry once.
+async function chatComplete(messages, wantJson) {
+  const body = { model: state.textModel, messages };
+  if (wantJson) body.response_format = { type: "json_object" };
+  let res = await openaiFetch("/chat/completions", body);
   if (res.status === 404) {
     await autoDetectModels().catch(() => {});
-    const next = kind === "image" ? state.imageModel : state.textModel;
-    if (next !== model) res = await fetch(url(next), opts);
+    if (state.textModel !== body.model) {
+      body.model = state.textModel;
+      res = await openaiFetch("/chat/completions", body);
+    }
   }
   if (!res.ok) throw new Error(await apiErrorMessage(res));
-  return res.json();
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content || "";
 }
 
-async function geminiText(prompt) {
-  const data = await postGenerate("text", {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: "application/json", temperature: 0.6 },
-  });
-  let text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
-  // Some models wrap JSON in ```json fences despite responseMimeType.
+async function aiText(prompt) {
+  let text = await chatComplete([{ role: "user", content: prompt }], true);
+  // Some models wrap JSON in ```json fences despite response_format.
   text = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
   try { return JSON.parse(text); }
   catch { throw new Error("The model returned an unexpected answer — please try again."); }
 }
 
 // Plain-text chat with history, for the AI Tutor.
-async function geminiChat(history) {
-  const data = await postGenerate("text", {
-    contents: history.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
-    generationConfig: { temperature: 0.7 },
-  });
-  return data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+function aiChat(history) {
+  return chatComplete(history.map((m) => ({
+    role: m.role === "model" ? "assistant" : m.role,
+    content: m.text,
+  })), false);
 }
 
-async function geminiImage(prompt) {
-  // Image models differ in which response-modality configs they accept,
-  // so fall back through the known variants.
-  const configs = [
-    { responseModalities: ["IMAGE"] },
-    { responseModalities: ["TEXT", "IMAGE"] },
-    null,
-  ];
+async function aiImage(prompt) {
+  // gpt-image-1 needs a verified org on some accounts; fall back to DALL·E.
+  const models = [...new Set([state.imageModel, "gpt-image-1", "dall-e-3", "dall-e-2"])];
   let lastErr = null;
-  for (const generationConfig of configs) {
-    const body = { contents: [{ parts: [{ text: prompt }] }] };
-    if (generationConfig) body.generationConfig = generationConfig;
-    try {
-      const data = await postGenerate("image", body);
-      const part = data?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
-      if (part) {
-        return `data:${part.inlineData.mimeType || "image/png"};base64,${part.inlineData.data}`;
-      }
+  for (const model of models) {
+    const body = { model, prompt, n: 1, size: "1024x1024" };
+    if (/^dall-e/.test(model)) body.response_format = "b64_json";
+    const res = await openaiFetch("/images/generations", body);
+    if (res.ok) {
+      const data = await res.json();
+      const item = data?.data?.[0];
+      if (item?.b64_json) return `data:image/png;base64,${item.b64_json}`;
+      if (item?.url) return item.url;
       lastErr = new Error("The image model returned no image.");
-    } catch (err) {
-      lastErr = err;
-      // Only a 400 (unsupported config) is worth retrying with another config.
-      if (!/\(400\)/.test(err.message || "")) throw err;
+      continue;
     }
+    lastErr = new Error(await apiErrorMessage(res));
+    // Only model-access problems are worth retrying with another model.
+    if (![400, 403, 404].includes(res.status)) throw lastErr;
   }
   throw lastErr;
 }
@@ -328,10 +326,10 @@ async function apiErrorMessage(res) {
     const j = await res.json();
     if (j?.error?.message) msg += ": " + j.error.message;
   } catch { /* keep generic message */ }
-  if (res.status === 400) msg += " — the request was rejected; if this keeps happening, use “Auto-detect best models” in Settings.";
-  if (res.status === 401 || res.status === 403) msg += " — your API key was refused; check it in Settings.";
+  if (res.status === 401) msg += " — your API key was refused; check it in Settings.";
+  if (res.status === 403) msg += " — your account can't use this model; try “Auto-detect best models” in Settings.";
   if (res.status === 404) msg += " — that model doesn't exist on your account; use “Auto-detect best models” in Settings.";
-  if (res.status === 429) msg += " — rate limit / quota reached; wait a moment and try again.";
+  if (res.status === 429) msg += " — rate limit or no credit on your OpenAI account; check billing and try again.";
   return msg;
 }
 
@@ -406,7 +404,7 @@ async function lookup(word) {
   $("lookupBtn").disabled = true;
 
   try {
-    const entry = await geminiText(lookupPrompt(word));
+    const entry = await aiText(lookupPrompt(word));
     entry.savedAt = Date.now();
     entry.level = state.level || "ANY";
     state.currentEntry = entry;
@@ -428,7 +426,7 @@ async function loadEntryImage(entry) {
   $("imgReveal").classList.add("hidden");
   try {
     const prompt = `Create one clear, friendly illustration with no words or letters in it. ${entry.imagePrompt || `A simple scene that visually explains the meaning of the English word "${entry.word}".`}`;
-    const dataUrl = await geminiImage(prompt);
+    const dataUrl = await aiImage(prompt);
     if (state.currentEntry === entry) {
       $("entryImg").src = dataUrl;
       $("entryImg").classList.remove("hidden");
@@ -545,7 +543,7 @@ $("wotdBtn").addEventListener("click", async () => {
   $("wotdTeaser").textContent = "Picking a word for you…";
   try {
     const known = Object.keys(getBook()).slice(0, 40).join(", ") || "none";
-    const data = await geminiText(`Pick ONE interesting, genuinely useful English word for a learner.
+    const data = await aiText(`Pick ONE interesting, genuinely useful English word for a learner.
 ${levelInstruction()}
 Do NOT pick any of these already-known words: ${known}.
 Return ONLY JSON: {"word": "the word", "teaser": "one short English sentence (max 15 words) hinting at what it means, without defining it fully"}`);
@@ -772,7 +770,7 @@ async function startAiQuiz() {
     `- ${e.word}: ${e.definitions?.[0]?.definition || ""}`).join("\n");
 
   try {
-    const data = await geminiText(`You are an English vocabulary quiz writer.
+    const data = await aiText(`You are an English vocabulary quiz writer.
 ${levelInstruction()}
 
 Create a multiple-choice quiz from these words the learner has studied:
@@ -865,7 +863,7 @@ async function coachCheck() {
   $("coachCheckBtn").disabled = true;
 
   try {
-    const data = await geminiText(`You are a supportive English writing coach.
+    const data = await aiText(`You are a supportive English writing coach.
 ${levelInstruction()}
 
 The learner wrote:
@@ -948,7 +946,7 @@ async function tutorSend() {
   state.tutorHistory.push({ role: "user", text: userText });
 
   try {
-    const reply = await geminiChat(state.tutorHistory);
+    const reply = await aiChat(state.tutorHistory);
     state.tutorHistory.push({ role: "model", text: reply });
     typing.className = "chat-msg bot";
     typing.innerHTML = renderMarkdownLite(reply);
@@ -1006,7 +1004,7 @@ $("detectModelsBtn").addEventListener("click", async () => {
 $("testApiBtn").addEventListener("click", async () => {
   $("settingsMsg").textContent = "Testing connection…";
   try {
-    const reply = await geminiChat([{ role: "user", text: "Reply with the single word: OK" }]);
+    const reply = await aiChat([{ role: "user", text: "Reply with the single word: OK" }]);
     $("settingsMsg").textContent = `✓ Connection OK — “${reply.trim().slice(0, 40)}” from ${state.textModel}.`;
   } catch (err) {
     $("settingsMsg").textContent = "✗ " + (err.message || String(err));
