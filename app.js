@@ -18,19 +18,18 @@ const LS = {
   WOTD: "engword_wotd",
 };
 
-// Stable alias defaults — actual newest models are auto-detected from the
-// user's account via ListModels (see autoDetectModels) on first use / on 404.
-const DEFAULT_TEXT_MODEL = "gemini-flash-lite-latest";
-const DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image";
+// Official model ids. If a key can't use them, the 404 auto-retry below
+// falls back to whatever models the account actually has.
+const DEFAULT_TEXT_MODEL = "gemini-3.1-flash-lite";
+const DEFAULT_IMAGE_MODEL = "gemini-3.1-flash-image";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
-// Migrate stored model ids that don't exist on the API (caused 404 errors).
-for (const [lsKey, bad] of [
-  [LS.TEXT_MODEL, /^gemini-(3\.1-|2\.5-flash$)/],
-  [LS.IMAGE_MODEL, /^gemini-3\.1-/],
-]) {
-  const v = localStorage.getItem(lsKey);
-  if (v && bad.test(v)) localStorage.removeItem(lsKey);
+// One-time reset of model ids stored by older versions of this app,
+// so the new official defaults above take effect.
+if (localStorage.getItem("engword_model_v") !== "2") {
+  localStorage.removeItem(LS.TEXT_MODEL);
+  localStorage.removeItem(LS.IMAGE_MODEL);
+  localStorage.setItem("engword_model_v", "2");
 }
 
 const state = {
@@ -114,10 +113,6 @@ function boot() {
   if (!state.apiKey) show("apikey");
   else if (!state.level) startQuiz();
   else show("lookup");
-  // If we've never confirmed real model ids for this account, detect them quietly.
-  if (state.apiKey && !localStorage.getItem(LS.TEXT_MODEL)) {
-    autoDetectModels().catch(() => {});
-  }
 }
 
 /* ============================================================
@@ -136,7 +131,6 @@ function saveKey(value, errEl) {
 
 $("saveKeyBtn").addEventListener("click", () => {
   if (saveKey($("apiKeyInput").value, $("apiKeyError"))) {
-    autoDetectModels().catch(() => {}); // pick real model ids for this account
     state.level ? show("lookup") : startQuiz();
   }
 });
