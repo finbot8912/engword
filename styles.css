@@ -60,9 +60,12 @@ h1, h2 { letter-spacing: -.02em; }
   border: none; background: transparent; color: var(--muted);
   padding: 8px 13px; border-radius: 9px; cursor: pointer;
   font-size: 13.5px; font-weight: 600; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px;
 }
 .nav-btn:hover { background: var(--accent-soft); color: var(--accent-dark); }
 .nav-btn.active { background: var(--accent-soft); color: var(--accent-dark); }
+.nav-ico { display: none; font-size: 18px; line-height: 1; }
+.nav-lbl-full { display: inline; }
 .level-badge {
   background: linear-gradient(135deg, #6366f1, #4338ca); color: #fff;
   border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 700;
@@ -379,4 +382,154 @@ hr { border: none; border-top: 1px solid var(--line); margin: 24px 0 14px; }
 .foot-inner {
   max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between;
   gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px;
+}
+
+/* ============================================================
+   RESPONSIVE — tablet
+   ============================================================ */
+@media (max-width: 900px) {
+  .topbar { gap: 12px; padding: 0 16px; }
+  .nav { gap: 0; }
+  .nav-btn { padding: 8px 9px; font-size: 12.5px; }
+  main { padding: 24px 16px 60px; }
+  .card { padding: 22px; }
+  .hero { padding: 40px 24px 36px; }
+  .hero-title { font-size: 27px; }
+  .page-title { font-size: 26px; }
+}
+
+/* ============================================================
+   RESPONSIVE — phones: top nav becomes a bottom tab bar
+   ============================================================ */
+@media (max-width: 768px) {
+  /* avoid iOS zoom-on-focus: inputs must be >= 16px */
+  input[type="text"], input[type="password"], textarea { font-size: 16px; }
+
+  /* --- top bar: just brand + level --- */
+  .topbar { height: 56px; padding: 0 14px; gap: 10px; justify-content: space-between; }
+  .logo-mark { width: 30px; height: 30px; font-size: 16px; }
+  .brand-name { font-size: 16px; }
+  .brand-tagline { font-size: 9.5px; }
+  .level-badge { padding: 6px 13px; font-size: 12px; }
+
+  /* --- nav: fixed bottom tab bar --- */
+  .nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    flex: none; flex-wrap: nowrap;
+    background: rgba(255, 255, 255, .97);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -2px 14px rgba(15, 23, 42, .07);
+    padding: 6px 2px calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+  .nav-btn {
+    flex: 1 1 0; min-width: 0;
+    flex-direction: column; gap: 3px;
+    padding: 5px 2px; border-radius: 10px;
+    font-size: 10px; line-height: 1.1;
+  }
+  .nav-btn:hover { background: transparent; color: var(--muted); }
+  .nav-btn.active { background: transparent; color: var(--accent); }
+  .nav-ico { display: block; font-size: 19px; }
+  .nav-lbl-full { display: none; }       /* drop "Writing"/"AI" prefixes */
+  .nav-lbl { font-size: 10px; white-space: nowrap; }
+
+  /* keep content clear of the bottom bar */
+  main { padding: 18px 14px 24px; }
+  .foot { margin-bottom: 64px; }
+
+  /* --- onboarding --- */
+  .onboard { gap: 22px; padding: 6px 0; }
+  .onboard-art { text-align: center; }
+  .onboard-glyph { margin: 0 auto; width: 64px; height: 64px; font-size: 28px; border-radius: 18px; }
+  .onboard-art h1 { font-size: 30px; margin: 14px 0 10px; }
+  .onboard-art p { font-size: 15px; margin: 0 auto; }
+
+  /* --- cards & headings --- */
+  .card { padding: 20px; }
+  .center-card { margin: 14px auto; }
+  .page-head { margin-bottom: 18px; }
+  .page-title { font-size: 23px; }
+
+  /* --- hero / search --- */
+  .hero { padding: 32px 18px 30px; border-radius: 18px; margin-bottom: 16px; }
+  .hero::after { font-size: 130px; top: -22px; right: -6px; }
+  .hero-title { font-size: 22px; }
+  .hero-sub { font-size: 14px; margin-bottom: 18px; }
+  .search-wrap { padding: 6px 6px 6px 12px; gap: 6px; }
+  .search-wrap input { font-size: 16px; padding: 9px 2px; }
+  .search-icon { width: 18px; height: 18px; }
+  button.primary { padding: 11px 16px; font-size: 14px; }
+
+  /* word of the day stacks (button full width) */
+  .wotd { padding: 16px 18px; gap: 12px; }
+  .wotd h3 { font-size: 21px; }
+  .wotd .ghost { width: 100%; }
+
+  /* --- entry --- */
+  .entry { padding: 20px 18px; }
+  .entry-head { gap: 8px 10px; padding-bottom: 12px; }
+  .entry-head h1 { font-size: 30px; }
+  .pron { font-size: 15px; }
+  .saved-flag { margin-left: 0; flex-basis: 100%; }
+  .entry-grid { gap: 22px; margin-top: 16px; }
+  .block { margin-bottom: 20px; }
+  .side-cta button { text-align: center; }
+
+  /* --- quiz --- */
+  .quiz-question { font-size: 18px; }
+  .quiz-options button { padding: 14px 15px; }
+  .big-score { font-size: 34px; }
+
+  /* --- practice / flashcards --- */
+  .practice-modes { gap: 14px; }
+  .mode-card .mode-icon { font-size: 34px; }
+  .flashcard { min-height: 220px; padding: 24px 20px; border-radius: 18px; }
+  .flash-face .fc-word { font-size: 32px; }
+  .flash-grades { gap: 8px; }
+  .grade { flex: 1; padding: 12px 6px; font-size: 14px; }
+  .grade small { font-size: 10px; }
+
+  /* --- coach --- */
+  .coach-actions { flex-direction: column; align-items: stretch; gap: 10px; }
+  .coach-actions .primary { width: 100%; }
+  .coach-corrected { font-size: 15.5px; }
+
+  /* --- tutor: fill the screen, sit above the bottom bar --- */
+  .tutor-card { border-radius: 14px; }
+  .tutor-log { height: 56vh; padding: 16px; }
+  .chat-msg { max-width: 90%; font-size: 14px; }
+  .tutor-input { padding: 10px; gap: 8px; }
+
+  /* --- wordbook: tabs scroll sideways instead of wrapping --- */
+  .tabs {
+    flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
+    gap: 8px; padding-bottom: 6px; margin: 4px -14px 18px; padding-left: 14px; padding-right: 14px;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: none; padding: 8px 16px; }
+  .book-item { padding: 15px 17px; }
+  .book-item h3 { font-size: 18px; }
+
+  /* --- settings field rows wrap --- */
+  .field-row { flex-wrap: wrap; }
+  .field-row .primary, .field-row .ghost { flex: 1; }
+
+  /* --- footer --- */
+  .foot { padding: 16px 14px; }
+  .foot-inner { flex-direction: column; gap: 6px; text-align: center; font-size: 11.5px; }
+}
+
+/* ============================================================
+   RESPONSIVE — very small phones
+   ============================================================ */
+@media (max-width: 380px) {
+  .brand-tagline { display: none; }
+  .nav-lbl { font-size: 9px; }
+  .nav-ico { font-size: 18px; }
+  .hero-title { font-size: 20px; }
+  .entry-head h1 { font-size: 26px; }
+  .flash-face .fc-word { font-size: 28px; }
+  .grade { font-size: 13px; padding: 11px 4px; }
 }
