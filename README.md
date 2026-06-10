@@ -1,42 +1,56 @@
-# EngWord — Leveled English Dictionary
+# EngWord — Smart English Dictionary & Tutor
 
-A personal English learner's dictionary web app powered by the Google Gemini API.
+A professional, personal English learner's dictionary and study suite powered by the
+Google Gemini API. No build step — plain HTML/CSS/JS.
 
-## Features
+## Dictionary
 
-- **Level check (A1–C2)** — a short 8-question quiz estimates your CEFR level, and every
-  explanation is written at that level. Press **`h`** on the test screen to skip the quiz
-  and use the dictionary without a level.
-- **Collins-style definitions** — full natural sentences that explain the word in use
-  (e.g. *"If you persevere with something, you keep trying and do not give up."*).
-- **Longman-style synonyms** — each synonym comes with a nuance note and an example sentence.
+- **Level check (A1–C2)** — a short 8-question placement quiz; every explanation is
+  written at your level. Press **`h`** on the test screen to skip the quiz and use the
+  app without a level.
+- **Collins-style definitions** — full natural sentences that explain the word in use.
+- **Longman-style synonyms** — each synonym comes with a nuance note and an example.
 - **Etymology, idioms, and similar sentences** for every word.
 - **English-only explanations** — Korean never appears in the entry itself.
-- **AI picture for every word** — generated with the Gemini image model
-  (`gemini-3.1-flash-image` by default). **Click the picture** to reveal the meaning in
-  both **English and Korean**.
-- **My Wordbook** — every word you look up is saved automatically (browser localStorage)
-  with five review tabs: Wordbook, Etymology, Idioms, Synonyms, Similar Sentences.
-  Saved entries re-open instantly without another API call.
-- **Bring your own API key** — the key is entered by the user, stored only in the browser,
-  and sent only to Google's API. Text and image model names can be changed in Settings.
+- **AI picture for every word** (`gemini-3.1-flash-image`). **Click the picture** to
+  reveal the meaning in both **English and Korean**.
+- **Listen** — browser text-to-speech pronunciation for headwords and flashcards.
+- **Word of the Day** — one level-appropriate new word daily, cached locally.
+
+## Study suite
+
+- **Practice → Flashcards** — spaced-repetition review (Leitner boxes: 10 min / 1 / 3 / 7 / 16 days)
+  of your saved words; grade yourself Again / Good / Easy.
+- **Practice → AI Quiz** — Gemini writes a fresh multiple-choice quiz from your own
+  wordbook (meanings, synonyms, fill-in-the-blank) with explanations per answer.
+- **Writing Coach** — paste or write English text; get a corrected version, every fix
+  explained at your level, a 1–10 naturalness score, a native-sounding rewrite and a
+  personalized tip.
+- **AI Tutor** — level-aware chat for grammar, word choice and nuance questions.
+- **My Wordbook** — every lookup is saved automatically (browser localStorage) with five
+  review tabs: Wordbook, Etymology, Idioms, Synonyms, Similar Sentences. Saved entries
+  re-open without another API call.
+
+## Models & API key
+
+- Bring your own Gemini API key (free at https://aistudio.google.com/apikey). It is
+  stored only in your browser and sent only to Google's API.
+- Text model: **`gemini-3.1-flash-lite`** (default) · Image model: **`gemini-3.1-flash-image`**.
+  Both can be changed in Settings.
 
 ## Run it
-
-No build step. Either open `index.html` directly in a browser, or serve the folder:
 
 ```bash
 python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
-On first launch the app asks for your Gemini API key
-(get one free at https://aistudio.google.com/apikey), then runs the level quiz.
+or simply open `index.html` in a browser.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `index.html` | App layout: key setup, level test, dictionary, wordbook, settings |
-| `styles.css` | All styling |
-| `app.js` | Quiz logic, Gemini API calls, entry rendering, wordbook storage |
+| `index.html` | All views: onboarding, level test, dictionary, practice, coach, tutor, wordbook, settings |
+| `styles.css` | Full design system (Inter + Source Serif 4, indigo theme) |
+| `app.js` | Quiz logic, Gemini calls, SRS flashcards, AI quiz, coach, tutor, wordbook storage |
