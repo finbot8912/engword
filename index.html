@@ -3,51 +3,62 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>EngWord — Leveled English Dictionary</title>
+<title>EngWord — Smart English Dictionary &amp; Tutor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
 <header class="topbar">
   <div class="brand" id="brandHome" title="Home">
-    <span class="logo">📖</span>
-    <span class="brand-name">EngWord</span>
+    <span class="logo-mark">E</span>
+    <span class="brand-name">EngWord<span class="brand-dot">.</span></span>
   </div>
-  <nav class="nav">
+  <nav class="nav" id="mainNav">
     <button class="nav-btn" data-view="lookup">Dictionary</button>
-    <button class="nav-btn" data-view="mybook">My Wordbook</button>
+    <button class="nav-btn" data-view="practice">Practice</button>
+    <button class="nav-btn" data-view="coach">Writing Coach</button>
+    <button class="nav-btn" data-view="tutor">AI Tutor</button>
+    <button class="nav-btn" data-view="mybook">Wordbook</button>
     <button class="nav-btn" data-view="settings">Settings</button>
   </nav>
-  <div class="level-badge" id="levelBadge" title="Your level (click to retake test)">Level: —</div>
+  <div class="level-badge" id="levelBadge" title="Your level — click to retake the test">—</div>
 </header>
 
 <main id="app">
 
   <!-- ============ API KEY SETUP ============ -->
   <section id="view-apikey" class="view">
-    <div class="card center-card">
-      <h1>Welcome to EngWord</h1>
-      <p class="muted">A personal English dictionary that explains words at <em>your</em> level,
-        with Collins-style plain-English definitions, Longman-style synonym notes, and AI pictures.</p>
-      <p>To begin, paste your <strong>Google Gemini API key</strong>. It is stored only in your browser
-        (localStorage) and sent only to Google's API.</p>
-      <div class="field-row">
-        <input type="password" id="apiKeyInput" placeholder="Paste your Gemini API key (AIza...)" autocomplete="off" />
-        <button class="primary" id="saveKeyBtn">Save key</button>
+    <div class="onboard">
+      <div class="onboard-art">
+        <div class="onboard-glyph">Aa</div>
+        <h1>Learn English words<br /><em>at your level.</em></h1>
+        <p>Collins-style definitions · Longman-style synonyms · AI pictures · personal wordbook · writing coach &amp; tutor.</p>
       </div>
-      <p class="hint">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</p>
-      <p class="error" id="apiKeyError"></p>
+      <div class="card onboard-card">
+        <h2>Get started</h2>
+        <p class="muted">Paste your <strong>Google Gemini API key</strong>. It is stored only in this browser and sent only to Google's API.</p>
+        <div class="field-row">
+          <input type="password" id="apiKeyInput" placeholder="Gemini API key (AIza...)" autocomplete="off" />
+        </div>
+        <button class="primary wide" id="saveKeyBtn">Save key &amp; continue</button>
+        <p class="hint">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</p>
+        <p class="error" id="apiKeyError"></p>
+      </div>
     </div>
   </section>
 
   <!-- ============ LEVEL TEST ============ -->
   <section id="view-test" class="view">
     <div class="card center-card">
+      <p class="eyebrow">Placement test</p>
       <h1>Quick Level Check</h1>
       <p class="muted">Answer a few short questions so explanations match your level (A1–C2).</p>
       <p class="skip-hint">Press <kbd>h</kbd> at any time to skip the test and continue without a level.</p>
       <div id="quizBox">
-        <div class="quiz-progress" id="quizProgress"></div>
+        <div class="quiz-progress"><div class="quiz-bar"><div id="quizBarFill"></div></div><span id="quizProgress"></span></div>
         <h2 class="quiz-question" id="quizQuestion"></h2>
         <div class="quiz-options" id="quizOptions"></div>
       </div>
@@ -62,11 +73,24 @@
 
   <!-- ============ DICTIONARY / LOOKUP ============ -->
   <section id="view-lookup" class="view">
-    <div class="search-wrap">
-      <input type="text" id="wordInput" placeholder="Type an English word… (e.g. resilient)" autocomplete="off" spellcheck="false" />
-      <button class="primary" id="lookupBtn">Look up</button>
+    <div class="hero">
+      <h1 class="hero-title">What word are you curious about?</h1>
+      <p class="hero-sub">Explained in plain English, at your level<span id="levelInline"></span> — with synonyms, origins and a picture.</p>
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="text" id="wordInput" placeholder="Type an English word… e.g. resilient" autocomplete="off" spellcheck="false" />
+        <button class="primary" id="lookupBtn">Look up</button>
+      </div>
     </div>
-    <p class="hint center">Explanations are adapted to your level<span id="levelInline"></span>. Press <kbd>h</kbd> on the test screen to use the dictionary without a level.</p>
+
+    <div class="wotd card" id="wotdCard">
+      <div class="wotd-left">
+        <p class="eyebrow">Word of the day</p>
+        <h3 id="wotdWord">—</h3>
+        <p class="muted" id="wotdTeaser">A fresh word picked for your level, every day.</p>
+      </div>
+      <button class="ghost" id="wotdBtn">Reveal today's word</button>
+    </div>
 
     <div id="loading" class="loading hidden">
       <div class="spinner"></div>
@@ -77,9 +101,10 @@
     <article id="entry" class="entry hidden">
       <div class="entry-head">
         <h1 id="entryWord"></h1>
+        <button class="speak-btn" id="speakWordBtn" title="Listen">🔊</button>
         <span id="entryPron" class="pron"></span>
         <span id="entryPos" class="pos"></span>
-        <button class="ghost small" id="saveEntryBtn">★ Saved to wordbook</button>
+        <span class="saved-flag" id="saveEntryBtn">★ saved to wordbook</span>
       </div>
 
       <div class="entry-grid">
@@ -96,7 +121,7 @@
 
           <section class="block">
             <h3>Word Origin <span class="tag">Etymology</span></h3>
-            <p id="entryEtym"></p>
+            <p id="entryEtym" class="etym"></p>
           </section>
 
           <section class="block">
@@ -125,15 +150,138 @@
             </div>
             <p class="hint">Click the picture to see the meaning in English and Korean.</p>
           </section>
+          <section class="block side-cta">
+            <h3>Keep learning</h3>
+            <button class="ghost wide" id="practiceCta">🃏 Review with flashcards</button>
+            <button class="ghost wide" id="coachCta">✍️ Use it in a sentence</button>
+            <button class="ghost wide" id="tutorCta">💬 Ask the AI tutor</button>
+          </section>
         </aside>
       </div>
     </article>
   </section>
 
+  <!-- ============ PRACTICE ============ -->
+  <section id="view-practice" class="view">
+    <div class="page-head">
+      <p class="eyebrow">Practice</p>
+      <h1 class="page-title">Make the words stick</h1>
+      <p class="muted center">Spaced-repetition flashcards and AI-generated quizzes from your own wordbook.</p>
+    </div>
+
+    <div id="practiceHome" class="practice-modes">
+      <div class="card mode-card">
+        <div class="mode-icon">🃏</div>
+        <h3>Flashcards</h3>
+        <p class="muted">Review saved words with spaced repetition. Words you find hard come back sooner.</p>
+        <p class="hint" id="flashDueInfo"></p>
+        <button class="primary" id="startFlashBtn">Start review</button>
+      </div>
+      <div class="card mode-card">
+        <div class="mode-icon">🧠</div>
+        <h3>AI Quiz</h3>
+        <p class="muted">Gemini writes a fresh multiple-choice quiz from your saved words — meanings, synonyms and fill-in-the-blank.</p>
+        <p class="hint" id="quizWordsInfo"></p>
+        <button class="primary" id="startAiQuizBtn">Generate quiz</button>
+      </div>
+    </div>
+    <p class="error center" id="practiceError"></p>
+
+    <!-- flashcards -->
+    <div id="flashArea" class="hidden">
+      <p class="center muted" id="flashCount"></p>
+      <div class="flashcard" id="flashCard">
+        <div class="flash-face" id="flashFront"></div>
+        <div class="flash-face flash-back hidden" id="flashBack"></div>
+      </div>
+      <p class="hint center" id="flashHint">Click the card to flip it.</p>
+      <div class="flash-grades hidden" id="flashGrades">
+        <button class="grade again" data-grade="again">Again<small>&lt; 10 min</small></button>
+        <button class="grade good" data-grade="good">Good<small>next box</small></button>
+        <button class="grade easy" data-grade="easy">Easy<small>skip a box</small></button>
+      </div>
+      <div class="center"><button class="ghost" id="flashQuitBtn">End review</button></div>
+    </div>
+
+    <!-- AI quiz -->
+    <div id="quizArea" class="hidden">
+      <div class="loading" id="aiQuizLoading"><div class="spinner"></div><p>Writing your quiz…</p></div>
+      <div id="aiQuizBox" class="card center-card hidden">
+        <div class="quiz-progress"><div class="quiz-bar"><div id="aiQuizBarFill"></div></div><span id="aiQuizProgress"></span></div>
+        <h2 class="quiz-question" id="aiQuizQuestion"></h2>
+        <div class="quiz-options" id="aiQuizOptions"></div>
+        <div class="quiz-feedback hidden" id="aiQuizFeedback"></div>
+        <button class="primary hidden" id="aiQuizNextBtn">Next →</button>
+      </div>
+      <div id="aiQuizResult" class="card center-card hidden">
+        <h2>Quiz complete 🎉</h2>
+        <p class="big-score" id="aiQuizScore"></p>
+        <div class="field-row center">
+          <button class="primary" id="aiQuizAgainBtn">New quiz</button>
+          <button class="ghost" id="aiQuizBackBtn">Back to practice</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WRITING COACH ============ -->
+  <section id="view-coach" class="view">
+    <div class="page-head">
+      <p class="eyebrow">Writing Coach</p>
+      <h1 class="page-title">Write it — get it polished</h1>
+      <p class="muted center">Write a sentence or short paragraph in English. The coach corrects it, explains every fix at your level, and shows a more natural version.</p>
+    </div>
+    <div class="card coach-card">
+      <textarea id="coachInput" rows="5" placeholder="Try using a word you just learned… e.g. 'Even the failure, she kept resilient and tried again.'"></textarea>
+      <div class="coach-actions">
+        <span class="hint" id="coachWordHint"></span>
+        <button class="primary" id="coachCheckBtn">Check my writing</button>
+      </div>
+    </div>
+    <div class="loading hidden" id="coachLoading"><div class="spinner"></div><p>Reading your writing…</p></div>
+    <p class="error center" id="coachError"></p>
+    <div id="coachResult" class="hidden">
+      <div class="card coach-block">
+        <div class="coach-score-row"><h3>Corrected version</h3><span class="score-pill" id="coachScore"></span></div>
+        <p class="coach-corrected" id="coachCorrected"></p>
+      </div>
+      <div class="card coach-block">
+        <h3>What changed &amp; why</h3>
+        <ul class="coach-issues" id="coachIssues"></ul>
+      </div>
+      <div class="card coach-block">
+        <h3>A more natural way to say it</h3>
+        <p class="coach-natural" id="coachNatural"></p>
+        <p class="coach-tip" id="coachTip"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ AI TUTOR ============ -->
+  <section id="view-tutor" class="view">
+    <div class="page-head">
+      <p class="eyebrow">AI Tutor</p>
+      <h1 class="page-title">Ask anything about English</h1>
+      <p class="muted center">Grammar, word choice, nuance, examples — answers are tuned to your level.</p>
+    </div>
+    <div class="card tutor-card">
+      <div class="tutor-log" id="tutorLog">
+        <div class="chat-msg bot">Hi! I'm your English tutor. Ask me about grammar, words, or anything you read here — for example, <em>"What's the difference between 'resilient' and 'tough'?"</em></div>
+      </div>
+      <div class="tutor-input">
+        <input type="text" id="tutorInput" placeholder="Ask a question in English…" autocomplete="off" />
+        <button class="primary" id="tutorSendBtn">Send</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ MY WORDBOOK ============ -->
   <section id="view-mybook" class="view">
-    <h1 class="page-title">My Wordbook</h1>
-    <p class="muted center">Every word you look up is saved here so you can review it again.</p>
+    <div class="page-head">
+      <p class="eyebrow">My Wordbook</p>
+      <h1 class="page-title">Everything you've looked up</h1>
+      <p class="muted center">Saved automatically, ready to review any time.</p>
+    </div>
     <div class="tabs" id="bookTabs">
       <button class="tab active" data-tab="words">Wordbook</button>
       <button class="tab" data-tab="etymology">Etymology</button>
@@ -147,7 +295,8 @@
   <!-- ============ SETTINGS ============ -->
   <section id="view-settings" class="view">
     <div class="card center-card">
-      <h1>Settings</h1>
+      <p class="eyebrow">Settings</p>
+      <h1>Your setup</h1>
       <label class="field-label">Gemini API key</label>
       <div class="field-row">
         <input type="password" id="settingsKeyInput" placeholder="AIza..." autocomplete="off" />
@@ -168,7 +317,12 @@
 
 </main>
 
-<footer class="foot">EngWord · explanations in English only · pictures by Gemini image model</footer>
+<footer class="foot">
+  <div class="foot-inner">
+    <span><strong>EngWord</strong> · your personal English dictionary &amp; tutor</span>
+    <span>Explanations in English only · pictures &amp; quizzes by Gemini · your key never leaves this browser</span>
+  </div>
+</footer>
 
 <script src="app.js"></script>
 </body>

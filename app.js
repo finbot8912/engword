@@ -1,10 +1,12 @@
 /* ============================================================
-   EngWord — leveled English dictionary powered by Gemini
-   - Quick CEFR level quiz (press "h" anywhere on the test to skip)
-   - Collins-style full-sentence definitions, English only
-   - Longman-style synonym notes
-   - Etymology, idioms, similar sentences — all saved to a wordbook
-   - AI picture per word; clicking it reveals English + Korean meaning
+   EngWord — leveled English dictionary & study suite (Gemini)
+   - CEFR level quiz (press "h" on the test to skip)
+   - Collins-style definitions, Longman-style synonyms, English only
+   - AI picture per word; click reveals English + Korean meaning
+   - Word of the day, listen (TTS)
+   - Practice: spaced-repetition flashcards + AI-generated quiz
+   - Writing Coach: correction with leveled explanations
+   - AI Tutor: chat about grammar, words and nuance
    ============================================================ */
 
 const LS = {
@@ -13,11 +15,17 @@ const LS = {
   BOOK: "engword_book",
   TEXT_MODEL: "engword_text_model",
   IMAGE_MODEL: "engword_image_model",
+  WOTD: "engword_wotd",
 };
 
-const DEFAULT_TEXT_MODEL = "gemini-2.5-flash";
+const DEFAULT_TEXT_MODEL = "gemini-3.1-flash-lite";
 const DEFAULT_IMAGE_MODEL = "gemini-3.1-flash-image";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+
+// Migrate users who still have the old default text model stored.
+if (localStorage.getItem(LS.TEXT_MODEL) === "gemini-2.5-flash") {
+  localStorage.setItem(LS.TEXT_MODEL, DEFAULT_TEXT_MODEL);
+}
 
 const state = {
   apiKey: localStorage.getItem(LS.KEY) || "",
@@ -28,12 +36,20 @@ const state = {
   quizScore: 0,
   currentEntry: null,
   currentView: "",
+  // practice
+  flashDeck: [],
+  flashIndex: 0,
+  aiQuiz: [],
+  aiQuizIndex: 0,
+  aiQuizScore: 0,
+  // tutor
+  tutorHistory: [],
 };
 
 const $ = (id) => document.getElementById(id);
 
 /* ============================================================
-   Level test — one question per band; score maps to CEFR level
+   Level test — score maps to CEFR level
    ============================================================ */
 const QUIZ = [
   { q: 'Choose the correct sentence.',
@@ -77,11 +93,13 @@ function show(view) {
     b.classList.toggle("active", b.dataset.view === view));
   if (view === "mybook") renderBook(currentTab);
   if (view === "settings") fillSettings();
+  if (view === "practice") renderPracticeHome();
+  if (view === "lookup") renderWotdCard();
 }
 
 function updateLevelBadge() {
   const lv = state.level;
-  $("levelBadge").textContent = "Level: " + (lv ? (lv === "ANY" ? "Any" : lv) : "—");
+  $("levelBadge").textContent = "Level " + (lv ? (lv === "ANY" ? "·" : lv) : "—");
   $("levelInline").textContent = lv && lv !== "ANY" ? ` (${lv})` : "";
 }
 
@@ -116,7 +134,7 @@ $("apiKeyInput").addEventListener("keydown", (e) => {
 });
 
 /* ============================================================
-   Quiz
+   Placement quiz
    ============================================================ */
 function startQuiz() {
   state.quizIndex = 0;
@@ -130,7 +148,8 @@ function startQuiz() {
 function renderQuizQuestion() {
   const i = state.quizIndex;
   const item = QUIZ[i];
-  $("quizProgress").textContent = `Question ${i + 1} of ${QUIZ.length}`;
+  $("quizProgress").textContent = `${i + 1} / ${QUIZ.length}`;
+  $("quizBarFill").style.width = `${(i / QUIZ.length) * 100}%`;
   $("quizQuestion").textContent = item.q;
   const box = $("quizOptions");
   box.innerHTML = "";
@@ -198,6 +217,21 @@ async function geminiText(prompt) {
   return JSON.parse(text);
 }
 
+// Plain-text chat with history, for the AI Tutor.
+async function geminiChat(history) {
+  const res = await fetch(`${API_BASE}/${state.textModel}:generateContent?key=${encodeURIComponent(state.apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: history.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+      generationConfig: { temperature: 0.7 },
+    }),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res));
+  const data = await res.json();
+  return data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+}
+
 async function geminiImage(prompt) {
   const res = await fetch(`${API_BASE}/${state.imageModel}:generateContent?key=${encodeURIComponent(state.apiKey)}`, {
     method: "POST",
@@ -232,6 +266,22 @@ function levelInstruction() {
   return `The learner's CEFR level is ${state.level}. Write every definition, note and example using vocabulary and grammar that a ${state.level} learner can understand comfortably. ${LEVEL_DESC[state.level]}`;
 }
 
+/* ============================================================
+   Text-to-speech (browser, free)
+   ============================================================ */
+function speak(text) {
+  if (!("speechSynthesis" in window) || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = 0.95;
+  speechSynthesis.speak(u);
+}
+$("speakWordBtn").addEventListener("click", () => speak(state.currentEntry?.word));
+
+/* ============================================================
+   Lookup flow
+   ============================================================ */
 function lookupPrompt(word) {
   return `You are an expert English learner's dictionary, combining the style of the Collins COBUILD dictionary and the Longman dictionary.
 
@@ -268,9 +318,6 @@ Return ONLY a JSON object with exactly this shape:
 Give 2-4 definitions, 3-5 synonyms, 1-3 idioms (use related common phrases if the word has no true idioms).`;
 }
 
-/* ============================================================
-   Lookup flow
-   ============================================================ */
 async function lookup(word) {
   word = word.trim();
   if (!word) return;
@@ -300,6 +347,7 @@ async function lookup(word) {
 
 async function loadEntryImage(entry) {
   $("imgLoading").classList.remove("hidden");
+  $("imgLoading").innerHTML = `<div class="spinner small"></div><p>Drawing the word…</p>`;
   $("entryImg").classList.add("hidden");
   $("imgReveal").classList.add("hidden");
   try {
@@ -372,10 +420,65 @@ $("lookupBtn").addEventListener("click", () => lookup($("wordInput").value));
 $("wordInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") lookup($("wordInput").value);
 });
-$("saveEntryBtn").addEventListener("click", () => {
+
+// side CTAs on the entry
+$("practiceCta").addEventListener("click", () => show("practice"));
+$("tutorCta").addEventListener("click", () => {
+  show("tutor");
+  if (state.currentEntry) $("tutorInput").value = `Tell me more about how to use "${state.currentEntry.word}".`;
+  $("tutorInput").focus();
+});
+$("coachCta").addEventListener("click", () => {
+  show("coach");
   if (state.currentEntry) {
-    saveToBook(state.currentEntry);
-    $("saveEntryBtn").textContent = "★ Saved to wordbook";
+    $("coachWordHint").textContent = `Try writing a sentence with “${state.currentEntry.word}”.`;
+  }
+  $("coachInput").focus();
+});
+
+/* ============================================================
+   Word of the day
+   ============================================================ */
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+function getWotdCache() {
+  try { return JSON.parse(localStorage.getItem(LS.WOTD)); } catch { return null; }
+}
+
+function renderWotdCard() {
+  const c = getWotdCache();
+  if (c && c.date === todayStr()) {
+    $("wotdWord").textContent = c.word;
+    $("wotdTeaser").textContent = c.teaser;
+    $("wotdBtn").textContent = "Open in dictionary →";
+  } else {
+    $("wotdWord").textContent = "—";
+    $("wotdTeaser").textContent = "A fresh word picked for your level, every day.";
+    $("wotdBtn").textContent = "Reveal today's word";
+  }
+}
+
+$("wotdBtn").addEventListener("click", async () => {
+  const c = getWotdCache();
+  if (c && c.date === todayStr()) {
+    $("wordInput").value = c.word;
+    lookup(c.word);
+    return;
+  }
+  $("wotdBtn").disabled = true;
+  $("wotdTeaser").textContent = "Picking a word for you…";
+  try {
+    const known = Object.keys(getBook()).slice(0, 40).join(", ") || "none";
+    const data = await geminiText(`Pick ONE interesting, genuinely useful English word for a learner.
+${levelInstruction()}
+Do NOT pick any of these already-known words: ${known}.
+Return ONLY JSON: {"word": "the word", "teaser": "one short English sentence (max 15 words) hinting at what it means, without defining it fully"}`);
+    localStorage.setItem(LS.WOTD, JSON.stringify({ date: todayStr(), word: data.word, teaser: data.teaser }));
+    renderWotdCard();
+  } catch (err) {
+    $("wotdTeaser").textContent = err.message || String(err);
+  } finally {
+    $("wotdBtn").disabled = false;
   }
 });
 
@@ -389,7 +492,9 @@ function getBook() {
 
 function saveToBook(entry) {
   const book = getBook();
-  book[(entry.word || "").toLowerCase()] = entry;
+  const key = (entry.word || "").toLowerCase();
+  entry.srs = book[key]?.srs || { box: 0, due: Date.now() }; // keep review progress
+  book[key] = entry;
   localStorage.setItem(LS.BOOK, JSON.stringify(book));
 }
 
@@ -467,6 +572,324 @@ function openSavedEntry(key) {
   renderEntry(entry);
   loadEntryImage(entry);
 }
+
+/* ============================================================
+   Practice — spaced-repetition flashcards
+   Leitner boxes: 0..4 → review after 0, 1, 3, 7, 16 days
+   ============================================================ */
+const SRS_DAYS = [0, 1, 3, 7, 16];
+
+function dueEntries() {
+  const now = Date.now();
+  return bookEntries().filter(([, e]) => !e.srs || (e.srs.due || 0) <= now);
+}
+
+function renderPracticeHome() {
+  $("practiceHome").classList.remove("hidden");
+  $("flashArea").classList.add("hidden");
+  $("quizArea").classList.add("hidden");
+  $("practiceError").textContent = "";
+  const total = bookEntries().length;
+  const due = dueEntries().length;
+  $("flashDueInfo").textContent = total
+    ? `${due} of ${total} saved words are due for review.`
+    : "Save some words in the Dictionary first.";
+  $("quizWordsInfo").textContent = total
+    ? `Quiz will be built from your ${Math.min(total, 8)} most recent words.`
+    : "Save some words in the Dictionary first.";
+}
+
+function startFlashcards() {
+  const due = dueEntries();
+  const deck = (due.length ? due : bookEntries()).map(([key, e]) => ({ key, e }));
+  if (!deck.length) {
+    $("practiceError").textContent = "Your wordbook is empty — look up some words first.";
+    return;
+  }
+  // shuffle
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  state.flashDeck = deck;
+  state.flashIndex = 0;
+  $("practiceHome").classList.add("hidden");
+  $("flashArea").classList.remove("hidden");
+  renderFlashcard();
+}
+
+function renderFlashcard() {
+  const item = state.flashDeck[state.flashIndex];
+  if (!item) { endFlashcards(); return; }
+  const e = item.e;
+  $("flashCount").textContent = `Card ${state.flashIndex + 1} of ${state.flashDeck.length}`;
+  $("flashFront").innerHTML = `<p class="fc-word">${escapeHtml(e.word)}</p><p class="fc-pos">${escapeHtml(e.partOfSpeech || "")}</p>`;
+  const d = e.definitions?.[0];
+  $("flashBack").innerHTML = `
+    <p class="fc-word" style="font-size:26px">${escapeHtml(e.word)}</p>
+    <p class="fc-def">${escapeHtml(d?.definition || "")}</p>
+    ${d?.example ? `<p class="fc-ex">“${escapeHtml(d.example)}”</p>` : ""}`;
+  $("flashFront").classList.remove("hidden");
+  $("flashBack").classList.add("hidden");
+  $("flashGrades").classList.add("hidden");
+  $("flashHint").classList.remove("hidden");
+}
+
+$("flashCard").addEventListener("click", () => {
+  if (!$("flashBack").classList.contains("hidden")) return;
+  $("flashFront").classList.add("hidden");
+  $("flashBack").classList.remove("hidden");
+  $("flashGrades").classList.remove("hidden");
+  $("flashHint").classList.add("hidden");
+  speak(state.flashDeck[state.flashIndex]?.e.word);
+});
+
+document.querySelectorAll("#flashGrades .grade").forEach((b) =>
+  b.addEventListener("click", () => gradeFlashcard(b.dataset.grade)));
+
+function gradeFlashcard(grade) {
+  const item = state.flashDeck[state.flashIndex];
+  if (!item) return;
+  const book = getBook();
+  const e = book[item.key];
+  if (e) {
+    const srs = e.srs || { box: 0, due: 0 };
+    if (grade === "again") {
+      srs.box = 0;
+      srs.due = Date.now() + 10 * 60 * 1000; // 10 minutes
+    } else {
+      const step = grade === "easy" ? 2 : 1;
+      srs.box = Math.min(srs.box + step, SRS_DAYS.length - 1);
+      srs.due = Date.now() + SRS_DAYS[srs.box] * 24 * 60 * 60 * 1000;
+    }
+    e.srs = srs;
+    localStorage.setItem(LS.BOOK, JSON.stringify(book));
+  }
+  state.flashIndex++;
+  if (state.flashIndex < state.flashDeck.length) renderFlashcard();
+  else endFlashcards();
+}
+
+function endFlashcards() {
+  renderPracticeHome();
+}
+
+$("startFlashBtn").addEventListener("click", startFlashcards);
+$("flashQuitBtn").addEventListener("click", endFlashcards);
+
+/* ============================================================
+   Practice — AI-generated quiz from the wordbook
+   ============================================================ */
+async function startAiQuiz() {
+  const entries = bookEntries().slice(0, 8);
+  if (!entries.length) {
+    $("practiceError").textContent = "Your wordbook is empty — look up some words first.";
+    return;
+  }
+  $("practiceHome").classList.add("hidden");
+  $("quizArea").classList.remove("hidden");
+  $("aiQuizLoading").classList.remove("hidden");
+  $("aiQuizBox").classList.add("hidden");
+  $("aiQuizResult").classList.add("hidden");
+
+  const wordList = entries.map(([, e]) =>
+    `- ${e.word}: ${e.definitions?.[0]?.definition || ""}`).join("\n");
+
+  try {
+    const data = await geminiText(`You are an English vocabulary quiz writer.
+${levelInstruction()}
+
+Create a multiple-choice quiz from these words the learner has studied:
+${wordList}
+
+Write ${Math.min(entries.length + 2, 8)} varied questions in ENGLISH ONLY. Mix these types:
+- "Which word matches this meaning?"
+- fill-in-the-blank sentences (the blank is one of the words)
+- "Which word is a synonym of ...?"
+
+Each question has exactly 4 options and one correct answer. Wrong options must be plausible.
+Return ONLY JSON:
+{"questions":[{"question":"...","options":["...","...","...","..."],"answerIndex":0,"explanation":"one short sentence saying why the answer is right"}]}`);
+    state.aiQuiz = data.questions || [];
+    if (!state.aiQuiz.length) throw new Error("The model returned no questions — try again.");
+    state.aiQuizIndex = 0;
+    state.aiQuizScore = 0;
+    $("aiQuizLoading").classList.add("hidden");
+    $("aiQuizBox").classList.remove("hidden");
+    renderAiQuizQuestion();
+  } catch (err) {
+    $("aiQuizLoading").classList.add("hidden");
+    $("practiceError").textContent = err.message || String(err);
+    $("quizArea").classList.add("hidden");
+    $("practiceHome").classList.remove("hidden");
+  }
+}
+
+function renderAiQuizQuestion() {
+  const i = state.aiQuizIndex;
+  const q = state.aiQuiz[i];
+  $("aiQuizProgress").textContent = `${i + 1} / ${state.aiQuiz.length}`;
+  $("aiQuizBarFill").style.width = `${(i / state.aiQuiz.length) * 100}%`;
+  $("aiQuizQuestion").textContent = q.question;
+  $("aiQuizFeedback").classList.add("hidden");
+  $("aiQuizNextBtn").classList.add("hidden");
+  const box = $("aiQuizOptions");
+  box.innerHTML = "";
+  q.options.forEach((opt, idx) => {
+    const b = document.createElement("button");
+    b.textContent = opt;
+    b.addEventListener("click", () => answerAiQuiz(idx, b));
+    box.appendChild(b);
+  });
+}
+
+function answerAiQuiz(idx, btn) {
+  const q = state.aiQuiz[state.aiQuizIndex];
+  const buttons = [...$("aiQuizOptions").children];
+  buttons.forEach((b) => (b.disabled = true));
+  buttons[q.answerIndex]?.classList.add("correct");
+  if (idx === q.answerIndex) {
+    state.aiQuizScore++;
+  } else {
+    btn.classList.add("wrong");
+  }
+  const fb = $("aiQuizFeedback");
+  fb.textContent = (idx === q.answerIndex ? "✓ Correct! " : "✗ Not quite. ") + (q.explanation || "");
+  fb.classList.remove("hidden");
+  $("aiQuizNextBtn").classList.remove("hidden");
+  $("aiQuizNextBtn").textContent = state.aiQuizIndex + 1 < state.aiQuiz.length ? "Next →" : "See result →";
+}
+
+$("aiQuizNextBtn").addEventListener("click", () => {
+  state.aiQuizIndex++;
+  if (state.aiQuizIndex < state.aiQuiz.length) {
+    renderAiQuizQuestion();
+  } else {
+    $("aiQuizBox").classList.add("hidden");
+    $("aiQuizResult").classList.remove("hidden");
+    $("aiQuizScore").textContent = `${state.aiQuizScore} / ${state.aiQuiz.length}`;
+  }
+});
+
+$("startAiQuizBtn").addEventListener("click", startAiQuiz);
+$("aiQuizAgainBtn").addEventListener("click", startAiQuiz);
+$("aiQuizBackBtn").addEventListener("click", renderPracticeHome);
+
+/* ============================================================
+   Writing Coach
+   ============================================================ */
+async function coachCheck() {
+  const text = $("coachInput").value.trim();
+  if (!text) return;
+  if (!state.apiKey) { show("apikey"); return; }
+
+  $("coachError").textContent = "";
+  $("coachResult").classList.add("hidden");
+  $("coachLoading").classList.remove("hidden");
+  $("coachCheckBtn").disabled = true;
+
+  try {
+    const data = await geminiText(`You are a supportive English writing coach.
+${levelInstruction()}
+
+The learner wrote:
+"""${text}"""
+
+Correct it and explain, in ENGLISH ONLY. Be encouraging but precise. If the writing is already perfect, say so and still offer a richer alternative.
+Return ONLY JSON:
+{
+  "corrected": "the corrected text",
+  "score": 7,
+  "issues": [
+    { "from": "the original wrong part", "to": "the fixed part", "why": "short, simple explanation of the rule or word choice" }
+  ],
+  "natural": "a more natural, native-sounding way to express the same idea",
+  "tip": "one short tip this learner should remember, based on their mistakes"
+}
+"score" is 1-10 for grammar + naturalness. "issues" may be empty if nothing was wrong.`);
+
+    $("coachScore").textContent = `${data.score ?? "–"} / 10`;
+    $("coachCorrected").textContent = data.corrected || "";
+    $("coachIssues").innerHTML = (data.issues || []).length
+      ? data.issues.map((i) => `
+          <li><span class="ci-from">${escapeHtml(i.from)}</span> → <span class="ci-to">${escapeHtml(i.to)}</span><br>
+          <span class="muted">${escapeHtml(i.why)}</span></li>`).join("")
+      : `<li>Nothing to fix — great job! 🎉</li>`;
+    $("coachNatural").textContent = data.natural || "";
+    $("coachTip").textContent = data.tip ? "💡 " + data.tip : "";
+    $("coachResult").classList.remove("hidden");
+  } catch (err) {
+    $("coachError").textContent = err.message || String(err);
+  } finally {
+    $("coachLoading").classList.add("hidden");
+    $("coachCheckBtn").disabled = false;
+  }
+}
+
+$("coachCheckBtn").addEventListener("click", coachCheck);
+$("coachInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) coachCheck();
+});
+
+/* ============================================================
+   AI Tutor chat
+   ============================================================ */
+function tutorPreamble() {
+  return `You are a friendly, expert English tutor inside a dictionary app.
+${levelInstruction()}
+Rules: answer in ENGLISH ONLY. Keep answers short and clear (2-6 sentences) unless the learner asks for more. Use simple examples. Use **bold** for key words.`;
+}
+
+// Minimal safe markdown: bold, code, line breaks (input is HTML-escaped first).
+function renderMarkdownLite(s) {
+  return escapeHtml(s)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\n/g, "<br>");
+}
+
+function appendChat(role, html) {
+  const div = document.createElement("div");
+  div.className = "chat-msg " + role;
+  div.innerHTML = html;
+  $("tutorLog").appendChild(div);
+  $("tutorLog").scrollTop = $("tutorLog").scrollHeight;
+  return div;
+}
+
+async function tutorSend() {
+  const text = $("tutorInput").value.trim();
+  if (!text) return;
+  if (!state.apiKey) { show("apikey"); return; }
+
+  $("tutorInput").value = "";
+  appendChat("user", renderMarkdownLite(text));
+  const typing = appendChat("bot typing", "Thinking…");
+  $("tutorSendBtn").disabled = true;
+
+  // First user turn carries the tutor instructions.
+  const userText = state.tutorHistory.length ? text : tutorPreamble() + "\n\nLearner: " + text;
+  state.tutorHistory.push({ role: "user", text: userText });
+
+  try {
+    const reply = await geminiChat(state.tutorHistory);
+    state.tutorHistory.push({ role: "model", text: reply });
+    typing.className = "chat-msg bot";
+    typing.innerHTML = renderMarkdownLite(reply);
+  } catch (err) {
+    state.tutorHistory.pop(); // let the user retry the same question
+    typing.className = "chat-msg bot";
+    typing.innerHTML = `<span class="error">${escapeHtml(err.message || String(err))}</span>`;
+  } finally {
+    $("tutorSendBtn").disabled = false;
+    $("tutorLog").scrollTop = $("tutorLog").scrollHeight;
+  }
+}
+
+$("tutorSendBtn").addEventListener("click", tutorSend);
+$("tutorInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") tutorSend();
+});
 
 /* ============================================================
    Settings
