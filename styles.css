@@ -83,6 +83,7 @@ h1, h2 { letter-spacing: -.02em; }
 .oauth-adv { margin-top: 6px; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 11px; background: #fbfcfe; }
 .oauth-adv-wrap { margin-top: 8px; }
 .oauth-adv-wrap summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
+.auth-status { font-size: 13px; font-weight: 600; margin: 4px 0 8px; }
 .oauth-flow { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
 .ostep { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #fff; }
 .ostep-head { display: flex; align-items: center; gap: 9px; font-weight: 700; margin-bottom: 6px; }

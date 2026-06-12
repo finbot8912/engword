@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=17" />
+<link rel="stylesheet" href="styles.css?v=18" />
 </head>
 <body>
 
@@ -400,7 +400,9 @@
         <input type="password" id="settingsKeyInput" placeholder="sk-..." autocomplete="off" />
         <button class="primary" id="settingsSaveKeyBtn" data-i18n="set.update">Update key</button>
       </div>
+      <p class="auth-status" id="authStatus"></p>
       <button class="ghost wide" id="oauthBtn" data-i18n="set.oauth">🔓 Sign in with ChatGPT (OpenAI)</button>
+      <button class="ghost wide hidden" id="oauthDisconnectBtn" data-i18n="set.oauthdisc">Disconnect ChatGPT (use API key)</button>
 
       <div id="oauthFlow" class="oauth-flow hidden">
         <!-- step 1 -->
@@ -454,6 +456,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>

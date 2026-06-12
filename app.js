@@ -18,6 +18,7 @@ const LS = {
   WOTD: "engword_wotd",
   LANG: "engword_lang",
   OAUTH_PROXY: "engword_oauth_proxy",
+  OAUTH_KEY: "engword_oauth_key",
 };
 
 // OpenAI Codex public OAuth client (same as the Codex CLI / OpenClaw / Hermes).
@@ -42,7 +43,12 @@ if (localStorage.getItem("engword_model_v") !== "3") {
 }
 
 const state = {
-  apiKey: localStorage.getItem(LS.KEY) || "",
+  // Two credential sources. OAuth (ChatGPT sign-in) is preferred when present;
+  // the manually-entered API key is the fallback. state.apiKey is the active one.
+  manualKey: localStorage.getItem(LS.KEY) || "",
+  oauthKey: localStorage.getItem(LS.OAUTH_KEY) || "",
+  get apiKey() { return this.oauthKey || this.manualKey; },
+  set apiKey(v) { this.manualKey = v; }, // legacy writes target the manual key
   level: localStorage.getItem(LS.LEVEL) || "", // "A1".."C2", "ANY", or "" (not tested yet)
   textModel: localStorage.getItem(LS.TEXT_MODEL) || DEFAULT_TEXT_MODEL,
   imageModel: localStorage.getItem(LS.IMAGE_MODEL) || DEFAULT_IMAGE_MODEL,
@@ -203,6 +209,11 @@ const I18N = {
     "set.oauthproxy": "OAuth 프록시 URL (Cloudflare Worker)",
     "set.oauthproxyhint": "ChatGPT 로그인에 한 번 필요합니다. 저장소의 worker.js를 Cloudflare에 무료 배포한 뒤 그 URL을 여기에 붙여넣으세요.",
     "set.oauthadv": "고급: OAuth 프록시 설정",
+    "set.oauthdisc": "ChatGPT 연결 해제 (API 키 사용)",
+    "auth.useoauth": "ChatGPT 계정으로 연결됨 — 이 자격증명을 우선 사용합니다.",
+    "auth.usekey": "입력한 API 키를 사용 중입니다.",
+    "auth.none": "아직 연결되지 않았습니다. ChatGPT로 로그인하거나 API 키를 입력하세요.",
+    "auth.disconnected": "ChatGPT 연결을 해제했습니다. 이제 API 키를 사용합니다.",
     "oauth.s1.title": "OpenAI 로그인 페이지 열기",
     "oauth.s1.desc": "ChatGPT 계정으로 로그인하세요(구글 로그인 가능). 그다음 접근을 허용합니다.",
     "oauth.s1.btn": "로그인 페이지 열기 ↗",
@@ -260,6 +271,11 @@ const I18N = {
     "book.delete": "delete",
     "book.none.ety": "No etymology saved.", "book.none.idioms": "No idioms saved.",
     "book.none.syn": "No synonyms saved.", "book.none.sents": "No sentences saved.",
+    "set.oauthdisc": "Disconnect ChatGPT (use API key)",
+    "auth.useoauth": "Connected with your ChatGPT account — using this credential first.",
+    "auth.usekey": "Using your entered API key.",
+    "auth.none": "Not connected yet. Sign in with ChatGPT or enter an API key.",
+    "auth.disconnected": "Disconnected ChatGPT. Now using your API key.",
     "oauth.needproxy": "First open <strong>Advanced: OAuth proxy setup</strong> below and enter your Cloudflare Worker address (deploy worker.js).",
     "oauth.opened": "Opened the login page in a new tab. After you sign in and approve, paste the address it lands on into step 2 below.",
     "oauth.restart": "Session expired. Please click Sign in with ChatGPT again.",
@@ -364,8 +380,9 @@ function saveKey(value, errEl) {
     if (errEl) errEl.textContent = "That doesn't look like a valid API key.";
     return false;
   }
-  state.apiKey = key;
+  state.manualKey = key;
   localStorage.setItem(LS.KEY, key);
+  updateAuthStatus();
   return true;
 }
 
@@ -1467,11 +1484,28 @@ $("tutorInput").addEventListener("keydown", (e) => {
    Settings
    ============================================================ */
 function fillSettings() {
-  $("settingsKeyInput").value = state.apiKey;
+  $("settingsKeyInput").value = state.manualKey;
   $("textModelInput").value = state.textModel;
   $("imageModelInput").value = state.imageModel;
   $("oauthProxyInput").value = state.oauthProxy;
   $("settingsMsg").textContent = "";
+  updateAuthStatus();
+}
+
+// Show which credential is active and offer to disconnect OAuth.
+function updateAuthStatus() {
+  const el = $("authStatus");
+  if (!el) return;
+  if (state.oauthKey) {
+    el.innerHTML = "🟢 " + t("auth.useoauth");
+    $("oauthDisconnectBtn").classList.remove("hidden");
+  } else if (state.manualKey) {
+    el.innerHTML = "🔑 " + t("auth.usekey");
+    $("oauthDisconnectBtn").classList.add("hidden");
+  } else {
+    el.innerHTML = "⚪ " + t("auth.none");
+    $("oauthDisconnectBtn").classList.add("hidden");
+  }
 }
 
 $("settingsSaveKeyBtn").addEventListener("click", () => {
@@ -1634,12 +1668,13 @@ async function chatgptFinish() {
     const apiKey = keyResp.access_token || keyResp.api_key;
     if (!apiKey) throw new Error(t("oauth.nokey"));
 
-    state.apiKey = apiKey;
-    localStorage.setItem(LS.KEY, apiKey);
-    $("settingsKeyInput").value = apiKey;
+    // Store as the OAuth credential — preferred over any manual key.
+    state.oauthKey = apiKey;
+    localStorage.setItem(LS.OAUTH_KEY, apiKey);
     $("oauthRedirectInput").value = "";
     $("oauthFlow").classList.add("hidden");
     oauthPkce = null;
+    updateAuthStatus();
     $("oauthMsg").innerHTML = "✅ " + t("oauth.success");
   } catch (err) {
     $("oauthMsg").innerHTML = "⚠️ " + escapeHtml(err.message || String(err)) + "<br><span class=\"muted\">" + t("oauth.hint") + "</span>";
@@ -1651,6 +1686,14 @@ async function chatgptFinish() {
 $("oauthBtn").addEventListener("click", chatgptSignIn);
 $("oauthFinishBtn").addEventListener("click", chatgptFinish);
 $("oauthRedirectInput").addEventListener("keydown", (e) => { if (e.key === "Enter") chatgptFinish(); });
+
+// Disconnect OAuth → fall back to the manual API key.
+$("oauthDisconnectBtn").addEventListener("click", () => {
+  state.oauthKey = "";
+  localStorage.removeItem(LS.OAUTH_KEY);
+  updateAuthStatus();
+  $("oauthMsg").innerHTML = t("auth.disconnected");
+});
 
 $("retakeTestBtn").addEventListener("click", startQuiz);
 $("clearBookBtn").addEventListener("click", () => {
