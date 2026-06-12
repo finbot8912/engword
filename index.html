@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=12" />
+<link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body>
 
@@ -245,6 +245,12 @@
       <p class="muted center" data-i18n="prac.sub">Spaced-repetition flashcards and AI-generated quizzes from your own wordbook.</p>
     </div>
 
+    <div class="kind-filter" id="pracKindFilter">
+      <button class="kchip active" data-kind="all" data-i18n="book.kind.all">All</button>
+      <button class="kchip" data-kind="word" data-i18n="book.kind.word">📖 Dictionary</button>
+      <button class="kchip" data-kind="term" data-i18n="book.kind.term">🧩 Terms</button>
+    </div>
+
     <div id="practiceHome" class="practice-modes">
       <div class="card mode-card">
         <div class="mode-icon">🃏</div>
@@ -421,6 +427,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

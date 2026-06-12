@@ -1091,9 +1091,27 @@ $("importFile").addEventListener("change", async (e) => {
    ============================================================ */
 const SRS_DAYS = [0, 1, 3, 7, 16];
 
+let pracKind = "all"; // practice on: "all" | "word" | "term"
+
+document.querySelectorAll("#pracKindFilter .kchip").forEach((c) =>
+  c.addEventListener("click", () => {
+    pracKind = c.dataset.kind;
+    document.querySelectorAll("#pracKindFilter .kchip").forEach((x) =>
+      x.classList.toggle("active", x === c));
+    renderPracticeHome();
+  }));
+
+// Saved entries narrowed to the selected practice kind.
+function pracEntries() {
+  let entries = bookEntries();
+  if (pracKind === "term") entries = entries.filter(([, e]) => e.kind === "term");
+  if (pracKind === "word") entries = entries.filter(([, e]) => e.kind !== "term");
+  return entries;
+}
+
 function dueEntries() {
   const now = Date.now();
-  return bookEntries().filter(([, e]) => !e.srs || (e.srs.due || 0) <= now);
+  return pracEntries().filter(([, e]) => !e.srs || (e.srs.due || 0) <= now);
 }
 
 function renderPracticeHome() {
@@ -1101,7 +1119,7 @@ function renderPracticeHome() {
   $("flashArea").classList.add("hidden");
   $("quizArea").classList.add("hidden");
   $("practiceError").textContent = "";
-  const total = bookEntries().length;
+  const total = pracEntries().length;
   const due = dueEntries().length;
   $("flashDueInfo").textContent = total
     ? t("prac.due", { due, total })
@@ -1113,7 +1131,7 @@ function renderPracticeHome() {
 
 function startFlashcards() {
   const due = dueEntries();
-  const deck = (due.length ? due : bookEntries()).map(([key, e]) => ({ key, e }));
+  const deck = (due.length ? due : pracEntries()).map(([key, e]) => ({ key, e }));
   if (!deck.length) {
     $("practiceError").textContent = t("prac.empty");
     return;
@@ -1193,7 +1211,7 @@ $("flashQuitBtn").addEventListener("click", endFlashcards);
    Practice — AI-generated quiz from the wordbook
    ============================================================ */
 async function startAiQuiz() {
-  const entries = bookEntries().slice(0, 8);
+  const entries = pracEntries().slice(0, 8);
   if (!entries.length) {
     $("practiceError").textContent = t("prac.empty");
     return;
