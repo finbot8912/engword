@@ -202,12 +202,20 @@ const I18N = {
     "set.oauth": "🔓 ChatGPT로 로그인 (OpenAI)",
     "set.oauthproxy": "OAuth 프록시 URL (Cloudflare Worker)",
     "set.oauthproxyhint": "ChatGPT 로그인에 한 번 필요합니다. 저장소의 worker.js를 Cloudflare에 무료 배포한 뒤 그 URL을 여기에 붙여넣으세요.",
-    "oauth.needproxy": "먼저 아래 <strong>OAuth 프록시 URL</strong>에 Cloudflare Worker 주소를 입력하세요. (worker.js를 배포)",
-    "oauth.starting": "로그인 코드를 받는 중…",
-    "oauth.entercode": "새 탭에서 OpenAI(구글 로그인 가능)에 로그인한 뒤, 이 코드를 입력하세요: <strong style=\"font-size:18px\">{code}</strong><br>승인하면 자동으로 연결됩니다. 이 창을 닫지 마세요…",
+    "set.oauthadv": "고급: OAuth 프록시 설정",
+    "oauth.s1.title": "OpenAI 로그인 페이지 열기",
+    "oauth.s1.desc": "ChatGPT 계정으로 로그인하세요(구글 로그인 가능). 그다음 접근을 허용합니다.",
+    "oauth.s1.btn": "로그인 페이지 열기 ↗",
+    "oauth.s2.title": "이동된 주소를 여기에 붙여넣기",
+    "oauth.s2.desc": "허용하면 브라우저가 “페이지를 열 수 없음” 같은 화면으로 이동합니다. 그 페이지의 전체 주소(<code>code=…</code> 포함)를 복사해 아래에 붙여넣으세요.",
+    "oauth.s2.btn": "로그인 완료",
+    "oauth.needproxy": "먼저 아래 <strong>고급: OAuth 프록시 설정</strong>을 열어 Cloudflare Worker 주소를 입력하세요. (worker.js 배포)",
+    "oauth.opened": "로그인 페이지를 새 탭으로 열었습니다. 로그인·허용 후, 이동된 주소를 아래 2단계에 붙여넣으세요.",
+    "oauth.restart": "세션이 만료되었습니다. ‘ChatGPT로 로그인’을 다시 눌러주세요.",
+    "oauth.nocode": "주소에서 인증 코드를 찾지 못했습니다. code=… 가 포함된 전체 주소를 붙여넣었는지 확인하세요.",
+    "oauth.badstate": "보안 상태값이 일치하지 않습니다. 1단계부터 다시 시도해주세요.",
     "oauth.finishing": "로그인 확인 중…",
     "oauth.success": "ChatGPT 계정으로 연결되었습니다. 이제 바로 사용할 수 있어요!",
-    "oauth.timeout": "시간이 초과되었습니다. 다시 시도해주세요.",
     "oauth.proxyfail": "프록시 요청 실패 — Worker URL과 배포 상태를 확인하세요.",
     "oauth.exchangefail": "토큰 교환에 실패했습니다.",
     "oauth.keyfail": "API 키 발급에 실패했습니다.",
@@ -252,12 +260,13 @@ const I18N = {
     "book.delete": "delete",
     "book.none.ety": "No etymology saved.", "book.none.idioms": "No idioms saved.",
     "book.none.syn": "No synonyms saved.", "book.none.sents": "No sentences saved.",
-    "oauth.needproxy": "First enter your Cloudflare Worker address in <strong>OAuth proxy URL</strong> below (deploy worker.js).",
-    "oauth.starting": "Requesting a sign-in code…",
-    "oauth.entercode": "In the new tab, sign in to OpenAI (Google login works), then enter this code: <strong style=\"font-size:18px\">{code}</strong><br>Approve it and you'll be connected automatically. Keep this page open…",
+    "oauth.needproxy": "First open <strong>Advanced: OAuth proxy setup</strong> below and enter your Cloudflare Worker address (deploy worker.js).",
+    "oauth.opened": "Opened the login page in a new tab. After you sign in and approve, paste the address it lands on into step 2 below.",
+    "oauth.restart": "Session expired. Please click Sign in with ChatGPT again.",
+    "oauth.nocode": "Couldn't find the auth code in that address. Paste the full address that contains code=…",
+    "oauth.badstate": "Security state mismatch. Please start again from step 1.",
     "oauth.finishing": "Confirming sign-in…",
     "oauth.success": "Connected with your ChatGPT account. You're ready to go!",
-    "oauth.timeout": "Timed out. Please try again.",
     "oauth.proxyfail": "Proxy request failed — check the Worker URL and that it is deployed.",
     "oauth.exchangefail": "Token exchange failed.",
     "oauth.keyfail": "Could not obtain an API key.",
@@ -1502,11 +1511,21 @@ $("testApiBtn").addEventListener("click", async () => {
 });
 
 /* ----------------------------------------------------------------
-   "Sign in with ChatGPT" — OpenAI Codex device-code OAuth.
-   The same flow Codex CLI / OpenClaw / Hermes use. Browsers are blocked
-   by CORS on auth.openai.com, so requests go through the user's own
-   Cloudflare Worker (worker.js); see Settings → OAuth proxy URL.
+   "Sign in with ChatGPT" — OpenAI Codex OAuth (authorization code + PKCE),
+   manual paste-back variant, as used by Codex CLI / OpenClaw / Hermes.
+
+   Step 1: open the OpenAI authorize URL (normal navigation — Google login
+           works; no CORS).
+   Step 2: after approving, the browser is redirected to
+           localhost:1455/auth/callback?code=... (which won't load); the user
+           copies that whole address and pastes it back.
+   We then exchange the code (+ PKCE verifier) for tokens, and trade the
+   id_token for an OpenAI API key. The token calls need the user's Cloudflare
+   Worker because auth.openai.com has no CORS (see Settings → OAuth proxy URL).
    ---------------------------------------------------------------- */
+const OAUTH_REDIRECT = "http://localhost:1455/auth/callback";
+let oauthPkce = null; // { verifier, state } kept between step 1 and step 2
+
 $("oauthProxyInput").addEventListener("change", () => {
   state.oauthProxy = $("oauthProxyInput").value.trim().replace(/\/$/, "");
   localStorage.setItem(LS.OAUTH_PROXY, state.oauthProxy);
@@ -1520,56 +1539,77 @@ function oauthPost(path, body) {
   });
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function b64url(bytes) {
+  let s = "";
+  bytes.forEach((b) => (s += String.fromCharCode(b)));
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 
+async function makePkce() {
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return { verifier, challenge: b64url(new Uint8Array(digest)) };
+}
+
+// Step 1 — build the authorize URL and reveal the paste-back step.
 async function chatgptSignIn() {
-  if (state.oauthPolling) return;
   if (!state.oauthProxy) {
     $("oauthMsg").innerHTML = t("oauth.needproxy");
+    document.querySelector(".oauth-adv-wrap")?.setAttribute("open", "");
     $("oauthProxyInput").focus();
     return;
   }
-  state.oauthPolling = true;
-  $("oauthBtn").disabled = true;
+  const pkce = await makePkce();
+  const st = b64url(crypto.getRandomValues(new Uint8Array(16)));
+  oauthPkce = { verifier: pkce.verifier, state: st };
+  const url = `${OAUTH_ISSUER}/oauth/authorize?` + new URLSearchParams({
+    response_type: "code",
+    client_id: OAUTH_CLIENT_ID,
+    redirect_uri: OAUTH_REDIRECT,
+    scope: "openid profile email offline_access",
+    code_challenge: pkce.challenge,
+    code_challenge_method: "S256",
+    state: st,
+    id_token_add_organizations: "true",
+    codex_cli_simplified_flow: "true",
+  }).toString();
+  $("oauthOpenLink").href = url;
+  $("oauthFlow").classList.remove("hidden");
+  $("oauthMsg").innerHTML = t("oauth.opened");
+  window.open(url, "_blank", "noopener");
+}
+
+// Step 2 — take the pasted redirect URL, exchange code for an API key.
+async function chatgptFinish() {
+  const pasted = $("oauthRedirectInput").value.trim();
+  if (!pasted) return;
+  if (!oauthPkce) { $("oauthMsg").innerHTML = t("oauth.restart"); return; }
+  let code, returnedState;
   try {
-    // 1) request a user code
-    $("oauthMsg").textContent = t("oauth.starting");
-    let res = await oauthPost("/api/accounts/deviceauth/usercode", { client_id: OAUTH_CLIENT_ID });
-    if (!res.ok) throw new Error(t("oauth.proxyfail") + " (" + res.status + ")");
-    const dev = await res.json();
-    const userCode = dev.user_code || dev.usercode;
-    const interval = (dev.interval || 5) * 1000;
+    const u = new URL(pasted);
+    code = u.searchParams.get("code");
+    returnedState = u.searchParams.get("state");
+  } catch {
+    // allow pasting just the code= part too
+    const m = pasted.match(/code=([^&\s]+)/);
+    code = m && m[1];
+  }
+  if (!code) { $("oauthMsg").innerHTML = t("oauth.nocode"); return; }
+  if (returnedState && returnedState !== oauthPkce.state) { $("oauthMsg").innerHTML = t("oauth.badstate"); return; }
 
-    // 2) user enters the code on OpenAI's device page (their own login, no CORS)
-    window.open(OAUTH_DEVICE_PAGE, "_blank", "noopener");
-    $("oauthMsg").innerHTML = t("oauth.entercode", { code: escapeHtml(userCode) });
-
-    // 3) poll until the user approves
-    let poll;
-    const deadline = Date.now() + 15 * 60 * 1000;
-    while (Date.now() < deadline) {
-      await sleep(interval);
-      const r = await oauthPost("/api/accounts/deviceauth/token", {
-        device_auth_id: dev.device_auth_id, user_code: userCode,
-      });
-      if (r.status === 200) { poll = await r.json(); break; }
-      if (r.status !== 403 && r.status !== 404) throw new Error(t("oauth.proxyfail") + " (" + r.status + ")");
-    }
-    if (!poll) throw new Error(t("oauth.timeout"));
-
-    // 4) exchange the authorization code (+ PKCE) for tokens
+  $("oauthFinishBtn").disabled = true;
+  try {
     $("oauthMsg").textContent = t("oauth.finishing");
-    res = await oauthPost("/oauth/token", {
+    let res = await oauthPost("/oauth/token", {
       grant_type: "authorization_code",
-      code: poll.authorization_code,
-      redirect_uri: OAUTH_ISSUER + "/deviceauth/callback",
+      code: decodeURIComponent(code),
+      redirect_uri: OAUTH_REDIRECT,
       client_id: OAUTH_CLIENT_ID,
-      code_verifier: poll.code_verifier,
+      code_verifier: oauthPkce.verifier,
     });
     if (!res.ok) throw new Error(t("oauth.exchangefail") + " (" + res.status + ")");
     const tok = await res.json();
 
-    // 5) trade the id_token for a usable OpenAI API key
     res = await oauthPost("/oauth/token", {
       grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
       client_id: OAUTH_CLIENT_ID,
@@ -1585,16 +1625,20 @@ async function chatgptSignIn() {
     state.apiKey = apiKey;
     localStorage.setItem(LS.KEY, apiKey);
     $("settingsKeyInput").value = apiKey;
+    $("oauthRedirectInput").value = "";
+    $("oauthFlow").classList.add("hidden");
+    oauthPkce = null;
     $("oauthMsg").innerHTML = "✅ " + t("oauth.success");
   } catch (err) {
     $("oauthMsg").innerHTML = "⚠️ " + escapeHtml(err.message || String(err)) + "<br><span class=\"muted\">" + t("oauth.hint") + "</span>";
   } finally {
-    state.oauthPolling = false;
-    $("oauthBtn").disabled = false;
+    $("oauthFinishBtn").disabled = false;
   }
 }
 
 $("oauthBtn").addEventListener("click", chatgptSignIn);
+$("oauthFinishBtn").addEventListener("click", chatgptFinish);
+$("oauthRedirectInput").addEventListener("keydown", (e) => { if (e.key === "Enter") chatgptFinish(); });
 
 $("retakeTestBtn").addEventListener("click", startQuiz);
 $("clearBookBtn").addEventListener("click", () => {

@@ -81,6 +81,15 @@ h1, h2 { letter-spacing: -.02em; }
 .lang-toggle:hover { border-color: var(--accent); }
 .ghost.sel { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-soft); }
 .oauth-adv { margin-top: 6px; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 11px; background: #fbfcfe; }
+.oauth-adv-wrap { margin-top: 8px; }
+.oauth-adv-wrap summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
+.oauth-flow { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.ostep { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #fff; }
+.ostep-head { display: flex; align-items: center; gap: 9px; font-weight: 700; margin-bottom: 6px; }
+.ostep-num { width: 24px; height: 24px; flex: none; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; font-size: 13px; display: grid; place-items: center; }
+.ostep .hint { margin: 4px 0 10px; }
+.as-btn { display: inline-block; text-decoration: none; text-align: center; }
+.ostep input { margin-bottom: 10px; }
 
 /* ====================== layout ====================== */
 main { flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 30px 20px 70px; }

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=15" />
+<link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
 
@@ -401,12 +401,32 @@
         <button class="primary" id="settingsSaveKeyBtn" data-i18n="set.update">Update key</button>
       </div>
       <button class="ghost wide" id="oauthBtn" data-i18n="set.oauth">🔓 Sign in with ChatGPT (OpenAI)</button>
-      <p class="hint" id="oauthMsg"></p>
-      <div id="oauthAdvanced" class="oauth-adv">
-        <label class="field-label" data-i18n="set.oauthproxy">OAuth proxy URL (Cloudflare Worker)</label>
-        <input type="text" id="oauthProxyInput" placeholder="https://engword-oauth.yourname.workers.dev" autocomplete="off" />
-        <p class="hint" data-i18n="set.oauthproxyhint">Needed once for ChatGPT sign-in. Deploy worker.js from the repo to Cloudflare (free) and paste its URL here.</p>
+
+      <div id="oauthFlow" class="oauth-flow hidden">
+        <!-- step 1 -->
+        <div class="ostep" id="ostep1">
+          <div class="ostep-head"><span class="ostep-num">1</span><span data-i18n="oauth.s1.title">Open the OpenAI login page</span></div>
+          <p class="hint" data-i18n="oauth.s1.desc">Sign in with your ChatGPT account (Google login works), then approve access.</p>
+          <a class="primary as-btn" id="oauthOpenLink" href="#" target="_blank" rel="noopener" data-i18n="oauth.s1.btn">Open login page ↗</a>
+        </div>
+        <!-- step 2 -->
+        <div class="ostep" id="ostep2">
+          <div class="ostep-head"><span class="ostep-num">2</span><span data-i18n="oauth.s2.title">Paste the page address back here</span></div>
+          <p class="hint" data-i18n="oauth.s2.desc">After approving, your browser lands on a page that may say “can't be reached”. Copy that page's full address (it contains <code>code=…</code>) and paste it below.</p>
+          <input type="text" id="oauthRedirectInput" placeholder="http://localhost:1455/auth/callback?code=..." autocomplete="off" />
+          <button class="primary wide" id="oauthFinishBtn" data-i18n="oauth.s2.btn">Complete sign-in</button>
+        </div>
       </div>
+      <p class="hint" id="oauthMsg"></p>
+
+      <details class="oauth-adv-wrap">
+        <summary data-i18n="set.oauthadv">Advanced: OAuth proxy setup</summary>
+        <div class="oauth-adv">
+          <label class="field-label" data-i18n="set.oauthproxy">OAuth proxy URL (Cloudflare Worker)</label>
+          <input type="text" id="oauthProxyInput" placeholder="https://engword-oauth.yourname.workers.dev" autocomplete="off" />
+          <p class="hint" data-i18n="set.oauthproxyhint">Needed once for ChatGPT sign-in. Deploy worker.js from the repo to Cloudflare (free) and paste its URL here.</p>
+        </div>
+      </details>
       <label class="field-label" data-i18n="set.text">Text model</label>
       <input type="text" id="textModelInput" />
       <label class="field-label" data-i18n="set.image">Image model</label>
@@ -434,6 +454,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=15"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>
