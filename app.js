@@ -43,6 +43,7 @@ const state = {
   quizIndex: 0,
   quizScore: 0,
   currentEntry: null,
+  currentTerm: null,
   currentView: "",
   // practice
   flashDeck: [],
@@ -100,7 +101,15 @@ const I18N = {
   ko: {
     "nav.dictionary": "사전", "nav.practice": "연습", "nav.writing": "작문&nbsp;",
     "nav.coach": "코치", "nav.ai": "AI&nbsp;", "nav.tutor": "튜터",
-    "nav.wordbook": "단어장", "nav.settings": "설정",
+    "nav.wordbook": "단어장", "nav.settings": "설정", "nav.terms": "용어",
+
+    "terms.title": "전문 용어를 풀어드립니다",
+    "terms.sub": "AI · 컴퓨터 · 마케팅 · 기술 · 과학 · 비즈니스 — 영어·라틴어·외래어 용어를 설명합니다.",
+    "terms.ph": "용어를 입력하세요… 예: API, latency, CRM, de facto",
+    "terms.btn": "질의", "terms.field.auto": "자동", "terms.loading": "용어를 설명하는 중…",
+    "term.def": "정의", "term.origin": "어원 <span class=\"tag\">영어 · 라틴어 · 외래어</span>",
+    "term.related": "관련 용어", "term.usage": "실제 쓰임",
+    "term.ko.show": "한국어 뜻 보기", "term.ko.hide": "한국어 뜻 숨기기",
 
     "ob.title": "내 레벨에 딱 맞는<br /><em>영어 단어 학습.</em>",
     "ob.sub": "콜린스식 정의 · 롱맨식 동의어 · AI 그림 · 나만의 단어장 · 작문 코치 &amp; 튜터",
@@ -199,6 +208,8 @@ const I18N = {
     "lookup.loading": "Looking up “{w}”…",
     "entry.drawing": "Drawing the word…", "entry.imgfail": "Could not draw the picture.",
     "wotd.teaser.default": "A fresh word picked for your level, every day.",
+    "terms.loading": "Explaining the term…",
+    "term.ko.show": "Show Korean meaning", "term.ko.hide": "Hide Korean meaning",
     "wotd.reveal": "Reveal today's word", "wotd.open": "Open in dictionary →",
     "wotd.picking": "Picking a word for you…",
     "prac.due": "{due} of {total} saved words are due for review.",
@@ -259,6 +270,7 @@ function applyLang() {
   if (state.currentView === "lookup") renderWotdCard();
   if (state.currentView === "practice") renderPracticeHome();
   if (state.currentView === "mybook") renderBook(currentTab);
+  if (state.currentView === "terms" && state.currentTerm) renderTermEntry(state.currentTerm);
 }
 
 function setLang(l) {
@@ -822,6 +834,7 @@ function renderBook(tab) {
       <div class="book-item">
         <div class="bi-head">
           <h3 data-word="${escapeHtml(key)}">${escapeHtml(e.word)}</h3>
+          ${e.kind === "term" ? `<span class="term-badge">${t("nav.terms")}</span>` : ""}
           <span class="bi-meta">${escapeHtml(e.partOfSpeech || "")} · ${escapeHtml(e.level || "")} · ${date}</span>
           <button class="bi-del" data-del="${escapeHtml(key)}">${t("book.delete")}</button>
         </div>
@@ -839,12 +852,147 @@ function renderBook(tab) {
 function openSavedEntry(key) {
   const entry = getBook()[key];
   if (!entry) return;
+  if (entry.kind === "term") {
+    state.currentTerm = entry;
+    show("terms");
+    $("termInput").value = entry.word;
+    $("termError").textContent = "";
+    renderTermEntry(entry);
+    return;
+  }
   state.currentEntry = entry;
   show("lookup");
   $("wordInput").value = entry.word;
   $("lookupError").textContent = "";
   renderEntry(entry);
 }
+
+/* ============================================================
+   Terms / terminology — technical, Latin & loanword terms.
+   Stored in the same wordbook (kind:"term") so it reuses the
+   wordbook, flashcards, AI quiz and backup with no extra work.
+   ============================================================ */
+let termField = "auto"; // selected domain chip
+
+document.querySelectorAll("#termFields .chip").forEach((c) =>
+  c.addEventListener("click", () => {
+    termField = c.dataset.field;
+    document.querySelectorAll("#termFields .chip").forEach((x) =>
+      x.classList.toggle("active", x === c));
+  }));
+
+function termPrompt(term) {
+  const scope = termField === "auto"
+    ? "Decide which field the term most likely belongs to (AI, computing, marketing, technology, science, business, etc.)."
+    : `Explain the term as it is used in the field of ${termField}.`;
+  return `You are an expert glossary that explains technical, professional and foreign-origin terms (including English, Latin, Greek and loanwords) for a learner.
+
+Explain this term: "${term}"
+${scope}
+
+${levelInstruction()}
+
+RULES:
+- Write every field except "koreanExplanation" in ENGLISH ONLY.
+- The definition must be a clear, full-sentence explanation a learner can understand, not a dictionary fragment.
+- "origin" must cover where the term comes from: the language of origin (e.g. Latin, Greek, French, an acronym, a brand name), the literal roots or what the letters stand for, and how it came to its current technical meaning.
+
+Return ONLY a JSON object:
+{
+  "term": "the term, corrected/expanded if it is an acronym (e.g. \\"API (Application Programming Interface)\\")",
+  "pronunciation": "IPA or a simple phonetic hint, e.g. /ˌeɪ.piːˈaɪ/",
+  "field": "the domain this term belongs to (e.g. AI, Computing, Marketing)",
+  "definition": "full-sentence English explanation of what the term means",
+  "example": "one natural sentence showing the term used in context",
+  "origin": "2-4 sentences on the term's origin: language/roots/acronym expansion and how its meaning developed",
+  "relatedTerms": [ { "word": "related or contrasting term", "note": "how it relates or differs, in English" } ],
+  "usage": ["3-4 natural sentences using the term in real professional context"],
+  "shortEnglish": "one very simple English sentence stating what the term means",
+  "koreanExplanation": "용어의 뜻과 쓰임을 한국어 2-3문장으로 설명"
+}
+Give 3-5 related terms.`;
+}
+
+async function termLookup(term) {
+  term = term.trim();
+  if (!term) return;
+  if (!state.apiKey) { show("apikey"); return; }
+
+  $("termError").textContent = "";
+  $("termEntry").classList.add("hidden");
+  $("termLoading").classList.remove("hidden");
+  $("termLoadingMsg").textContent = t("terms.loading");
+  $("termBtn").disabled = true;
+
+  try {
+    const r = await aiText(termPrompt(term));
+    // Map the term answer onto the standard entry schema so the wordbook,
+    // flashcards, quiz and backup all work without special-casing.
+    const entry = {
+      word: r.term || term,
+      pronunciation: r.pronunciation || "",
+      partOfSpeech: r.field || (termField !== "auto" ? termField : "term"),
+      definitions: [{ definition: r.definition || "", example: r.example || "" }],
+      synonyms: (r.relatedTerms || []).map((x) => ({ word: x.word, note: x.note, example: "" })),
+      etymology: r.origin || "",
+      idioms: [],
+      similarSentences: r.usage || [],
+      shortEnglish: r.shortEnglish || "",
+      koreanExplanation: r.koreanExplanation || "",
+      kind: "term",
+      field: r.field || termField,
+      savedAt: Date.now(),
+      level: state.level || "ANY",
+    };
+    state.currentTerm = entry;
+    renderTermEntry(entry);
+    saveToBook(entry);
+  } catch (err) {
+    $("termError").textContent = err.message || String(err);
+  } finally {
+    $("termLoading").classList.add("hidden");
+    $("termBtn").disabled = false;
+  }
+}
+
+function renderTermEntry(e) {
+  $("termWord").textContent = e.word || "";
+  $("termPron").textContent = e.pronunciation || "";
+  $("termField").textContent = e.field || e.partOfSpeech || "";
+
+  $("termDefs").innerHTML = (e.definitions || []).map((d) => `
+    <li>
+      <span class="def-text">${escapeHtml(d.definition)}</span>
+      ${d.example ? `<span class="def-ex">“${escapeHtml(d.example)}”</span>` : ""}
+    </li>`).join("");
+
+  $("termOrigin").textContent = e.etymology || "";
+
+  $("termRelated").innerHTML = (e.synonyms || []).map((s) => `
+    <div class="syn-item">
+      <span class="syn-word">${escapeHtml(s.word)}</span>
+      ${s.note ? `— <span class="syn-note">${escapeHtml(s.note)}</span>` : ""}
+    </div>`).join("") || `<span class="muted">—</span>`;
+
+  $("termUsage").innerHTML = (e.similarSentences || []).map((s) =>
+    `<li>${escapeHtml(s)}</li>`).join("");
+
+  $("termKo").textContent = e.koreanExplanation || "";
+  $("termKo").classList.add("hidden");
+  $("termKoToggle").innerHTML = t("term.ko.show");
+
+  $("termEntry").classList.remove("hidden");
+}
+
+$("termKoToggle").addEventListener("click", () => {
+  const hidden = $("termKo").classList.toggle("hidden");
+  $("termKoToggle").innerHTML = hidden ? t("term.ko.show") : t("term.ko.hide");
+});
+$("termSpeakBtn").addEventListener("click", () => speak(state.currentTerm?.word));
+$("termBtn").addEventListener("click", () => termLookup($("termInput").value));
+$("termInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") termLookup($("termInput").value);
+});
 
 /* ============================================================
    Wordbook backup — export / import as a JSON file

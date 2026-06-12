@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=9" />
+<link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
 
@@ -22,6 +22,7 @@
   </div>
   <nav class="nav" id="mainNav">
     <button class="nav-btn" data-view="lookup"><span class="nav-ico">📖</span><span class="nav-lbl" data-i18n="nav.dictionary">Dictionary</span></button>
+    <button class="nav-btn" data-view="terms"><span class="nav-ico">🧩</span><span class="nav-lbl" data-i18n="nav.terms">Terms</span></button>
     <button class="nav-btn" data-view="practice"><span class="nav-ico">🎯</span><span class="nav-lbl" data-i18n="nav.practice">Practice</span></button>
     <button class="nav-btn" data-view="coach"><span class="nav-ico">✍️</span><span class="nav-lbl nav-lbl-full" data-i18n="nav.writing">Writing&nbsp;</span><span class="nav-lbl" data-i18n="nav.coach">Coach</span></button>
     <button class="nav-btn" data-view="tutor"><span class="nav-ico">💬</span><span class="nav-lbl nav-lbl-full" data-i18n="nav.ai">AI&nbsp;</span><span class="nav-lbl" data-i18n="nav.tutor">Tutor</span></button>
@@ -165,6 +166,69 @@
           </section>
         </aside>
       </div>
+    </article>
+  </section>
+
+  <!-- ============ TERMS / TERMINOLOGY ============ -->
+  <section id="view-terms" class="view">
+    <div class="hero hero-terms">
+      <h1 class="hero-title" data-i18n="terms.title">Decode any technical term</h1>
+      <p class="hero-sub" data-i18n="terms.sub">AI, computing, marketing, tech, science, business — English, Latin and loanword terms, explained.</p>
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="text" id="termInput" placeholder="Type a term… e.g. API, latency, CRM, de facto" data-i18n-ph="terms.ph" autocomplete="off" spellcheck="false" />
+        <button class="primary" id="termBtn" data-i18n="terms.btn">Explain</button>
+      </div>
+      <div class="field-chips" id="termFields">
+        <button class="chip active" data-field="auto" data-i18n="terms.field.auto">Auto</button>
+        <button class="chip" data-field="AI">AI</button>
+        <button class="chip" data-field="Computing">Computing</button>
+        <button class="chip" data-field="Marketing">Marketing</button>
+        <button class="chip" data-field="Technology">Technology</button>
+        <button class="chip" data-field="Science">Science</button>
+        <button class="chip" data-field="Business">Business</button>
+      </div>
+    </div>
+
+    <div id="termLoading" class="loading hidden">
+      <div class="spinner"></div>
+      <p id="termLoadingMsg">Explaining the term…</p>
+    </div>
+    <p class="error center" id="termError"></p>
+
+    <article id="termEntry" class="entry hidden">
+      <div class="entry-head">
+        <h1 id="termWord"></h1>
+        <button class="speak-btn" id="termSpeakBtn" title="Listen">🔊</button>
+        <span id="termPron" class="pron"></span>
+        <span id="termField" class="pos"></span>
+        <span class="saved-flag" id="termSaved" data-i18n="entry.saved">★ saved to wordbook</span>
+      </div>
+
+      <section class="block">
+        <h3 data-i18n="term.def">Definition</h3>
+        <ol id="termDefs" class="defs"></ol>
+      </section>
+
+      <section class="block">
+        <h3 data-i18n="term.origin">Origin <span class="tag">English · Latin · loanword</span></h3>
+        <p id="termOrigin" class="etym"></p>
+      </section>
+
+      <section class="block">
+        <h3 data-i18n="term.related">Related Terms</h3>
+        <div id="termRelated" class="syns"></div>
+      </section>
+
+      <section class="block">
+        <h3 data-i18n="term.usage">In Use</h3>
+        <ul id="termUsage" class="sents"></ul>
+      </section>
+
+      <section class="block">
+        <button class="ghost small" id="termKoToggle" data-i18n="term.ko.show">한국어 뜻 보기</button>
+        <p id="termKo" class="term-ko hidden"></p>
+      </section>
     </article>
   </section>
 
@@ -347,6 +411,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
