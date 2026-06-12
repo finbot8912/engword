@@ -172,6 +172,10 @@ const I18N = {
     "tab.words": "단어집", "tab.ety": "어원", "tab.idioms": "숙어",
     "tab.syn": "동의어", "tab.sents": "유사 문장",
     "book.empty": "단어장이 비어 있습니다.<br>사전에서 단어를 검색하면 자동으로 저장됩니다.",
+    "book.export": "⬇ 단어장 백업 (JSON)", "book.import": "⬆ 백업 불러오기",
+    "book.exported": "단어 {n}개를 백업 파일로 저장했습니다. 파일을 안전한 곳에 보관하세요.",
+    "book.imported": "가져오기 완료: 새 단어 {a}개, 갱신 {u}개.",
+    "book.importfail": "EngWord 백업 파일이 아닌 것 같습니다.",
     "book.delete": "삭제",
     "book.none.ety": "저장된 어원이 없습니다.", "book.none.idioms": "저장된 숙어가 없습니다.",
     "book.none.syn": "저장된 동의어가 없습니다.", "book.none.sents": "저장된 문장이 없습니다.",
@@ -208,6 +212,9 @@ const I18N = {
     "coach.tryword": "Try writing a sentence with “{w}”.",
     "tutor.thinking": "Thinking…",
     "book.empty": "Your wordbook is empty.<br>Look up a word in the Dictionary and it will be saved here automatically.",
+    "book.exported": "Backup file with {n} words downloaded. Keep it somewhere safe.",
+    "book.imported": "Imported: {a} new words, {u} updated.",
+    "book.importfail": "That file doesn't look like an EngWord backup.",
     "book.delete": "delete",
     "book.none.ety": "No etymology saved.", "book.none.idioms": "No idioms saved.",
     "book.none.syn": "No synonyms saved.", "book.none.sents": "No sentences saved.",
@@ -838,6 +845,53 @@ function openSavedEntry(key) {
   $("lookupError").textContent = "";
   renderEntry(entry);
 }
+
+/* ============================================================
+   Wordbook backup — export / import as a JSON file
+   ============================================================ */
+$("exportBtn").addEventListener("click", () => {
+  const book = getBook();
+  const data = {
+    app: "engword", version: 1, exportedAt: new Date().toISOString(),
+    level: state.level, book,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `engword-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  $("bookMsg").textContent = t("book.exported", { n: Object.keys(book).length });
+});
+
+$("importBtn").addEventListener("click", () => $("importFile").click());
+
+$("importFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    const imported = data.book ?? data; // accept a full backup or a raw book object
+    if (!imported || typeof imported !== "object" || Array.isArray(imported)) throw new Error("bad");
+    const book = getBook();
+    let added = 0, updated = 0;
+    for (const [k, v] of Object.entries(imported)) {
+      if (!v || typeof v !== "object" || !v.word) continue;
+      if (!book[k]) added++;
+      else if ((v.savedAt || 0) > (book[k].savedAt || 0)) updated++;
+      else continue;
+      book[k] = v;
+    }
+    if (!added && !updated && !Object.keys(imported).length) throw new Error("empty");
+    localStorage.setItem(LS.BOOK, JSON.stringify(book));
+    if (!state.level && data.level) setLevel(data.level);
+    renderBook(currentTab);
+    $("bookMsg").textContent = t("book.imported", { a: added, u: updated });
+  } catch {
+    $("bookMsg").textContent = t("book.importfail");
+  }
+  e.target.value = ""; // allow re-importing the same file
+});
 
 /* ============================================================
    Practice — spaced-repetition flashcards

@@ -372,6 +372,8 @@ hr { border: none; border-top: 1px solid var(--line); margin: 24px 0 14px; }
 }
 .tab.active { background: linear-gradient(135deg, #6366f1, #4f46e5); border-color: transparent; color: #fff; }
 
+.book-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 0 0 10px; }
+
 .book-content { display: grid; gap: 14px; }
 .book-item {
   background: var(--card); border: 1px solid var(--line); border-radius: 14px;

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=8" />
+<link rel="stylesheet" href="styles.css?v=9" />
 </head>
 <body>
 
@@ -296,6 +296,12 @@
       <button class="tab" data-tab="synonyms" data-i18n="tab.syn">Synonyms</button>
       <button class="tab" data-tab="sentences" data-i18n="tab.sents">Similar Sentences</button>
     </div>
+    <div class="book-actions">
+      <button class="ghost" id="exportBtn" data-i18n="book.export">⬇ Export backup (JSON)</button>
+      <button class="ghost" id="importBtn" data-i18n="book.import">⬆ Import backup</button>
+      <input type="file" id="importFile" accept="application/json,.json" class="hidden" />
+    </div>
+    <p class="hint center" id="bookMsg"></p>
     <div id="bookContent" class="book-content"></div>
   </section>
 
@@ -341,6 +347,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
