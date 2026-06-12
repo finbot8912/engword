@@ -108,7 +108,7 @@ const I18N = {
     "terms.ph": "용어를 입력하세요… 예: API, latency, CRM, de facto",
     "terms.btn": "질의", "terms.field.auto": "자동", "terms.loading": "용어를 설명하는 중…",
     "term.def": "정의", "term.origin": "어원 <span class=\"tag\">영어 · 라틴어 · 외래어</span>",
-    "term.related": "관련 용어", "term.usage": "실제 쓰임",
+    "term.related": "관련 용어", "term.usage": "실제 쓰임", "term.other": "다른 뜻",
     "term.ko.show": "한국어 뜻 보기", "term.ko.hide": "한국어 뜻 숨기기",
 
     "ob.title": "내 레벨에 딱 맞는<br /><em>영어 단어 학습.</em>",
@@ -881,15 +881,41 @@ document.querySelectorAll("#termFields .chip").forEach((c) =>
       x.classList.toggle("active", x === c));
   }));
 
+// Modern AI/LLM glossary — keeps acronym lookups current (e.g. MCP must
+// resolve to Model Context Protocol, not the 1943 McCulloch-Pitts neuron).
+const MODERN_AI_GLOSSARY = `MCP = Model Context Protocol: Anthropic's open standard (2024) that connects AI assistants/agents to external tools, data sources and prompts via MCP servers and clients.
+token = the unit of text an LLM reads and writes; text is split into tokens by a tokenizer; pricing and context limits are counted in tokens.
+context / context window = the amount of text (in tokens) an LLM can consider at once, including the system prompt, conversation and documents.
+vector DB / vector database = a database that stores embeddings (number vectors) and finds similar items fast; the storage layer behind RAG (e.g. Pinecone, pgvector, Chroma).
+RAG = Retrieval-Augmented Generation: retrieving relevant documents and adding them to the prompt so the LLM answers with up-to-date, grounded facts.
+parser = a component that turns raw text or LLM output into structured data (e.g. parsing a model's JSON or tool-call output); also a compiler stage.
+skill / Skills = packaged instructions, scripts and resources that extend what an AI agent can do (e.g. Claude Skills / Agent Skills).
+agent = an LLM-powered system that plans multi-step work and calls tools autonomously.
+embedding = a vector of numbers representing the meaning of text/images, used for search and RAG.
+system prompt = the hidden instruction that sets an LLM's role and rules.
+fine-tuning = further training of a base model on custom examples; LoRA = a cheap fine-tuning method.
+hallucination = when an LLM states something false as fact.
+inference = running a trained model to get outputs (vs training).
+prompt engineering = designing inputs to get reliable LLM outputs.
+transformer = the neural-network architecture behind modern LLMs ("Attention Is All You Need", 2017).
+guardrails = safety filters/constraints around model inputs and outputs.
+multimodal = a model that handles text plus images/audio/video.
+function calling / tool use = LLM responding with structured calls that run real code or APIs.`;
+
 function termPrompt(term) {
   const scope = termField === "auto"
     ? "Decide which field the term most likely belongs to (AI, computing, marketing, technology, science, business, etc.)."
     : `Explain the term as it is used in the field of ${termField}.`;
+  const aiRecency = (termField === "AI" || termField === "auto") ? `
+IMPORTANT — RECENCY: For AI and tech terms, ALWAYS prefer the meaning most widely used TODAY in the modern AI/LLM industry (LLMs, agents, RAG, prompting, MCP), NOT older academic meanings. For example, "MCP" must be explained as Model Context Protocol — never as McCulloch-Pitts neuron. If an older or different meaning also exists, put it in "otherMeanings" instead of the main definition.
+Trusted reference glossary — when the term matches one of these, use this meaning:
+${MODERN_AI_GLOSSARY}
+` : "";
   return `You are an expert glossary that explains technical, professional and foreign-origin terms (including English, Latin, Greek and loanwords) for a learner.
 
 Explain this term: "${term}"
 ${scope}
-
+${aiRecency}
 ${levelInstruction()}
 
 RULES:
@@ -907,6 +933,7 @@ Return ONLY a JSON object:
   "origin": "2-4 sentences on the term's origin: language/roots/acronym expansion and how its meaning developed",
   "relatedTerms": [ { "word": "related or contrasting term", "note": "how it relates or differs, in English" } ],
   "usage": ["3-4 natural sentences using the term in real professional context"],
+  "otherMeanings": ["other meanings this term has in different fields or older usage, each as one short sentence; empty array if none"],
   "shortEnglish": "one very simple English sentence stating what the term means",
   "koreanExplanation": "용어의 뜻과 쓰임을 한국어 2-3문장으로 설명"
 }
@@ -937,6 +964,7 @@ async function termLookup(term) {
       etymology: r.origin || "",
       idioms: [],
       similarSentences: r.usage || [],
+      otherMeanings: r.otherMeanings || [],
       shortEnglish: r.shortEnglish || "",
       koreanExplanation: r.koreanExplanation || "",
       kind: "term",
@@ -976,6 +1004,10 @@ function renderTermEntry(e) {
 
   $("termUsage").innerHTML = (e.similarSentences || []).map((s) =>
     `<li>${escapeHtml(s)}</li>`).join("");
+
+  const others = e.otherMeanings || [];
+  $("termOther").innerHTML = others.map((s) => `<li>${escapeHtml(s)}</li>`).join("");
+  $("termOtherBlock").classList.toggle("hidden", !others.length);
 
   $("termKo").textContent = e.koreanExplanation || "";
   $("termKo").classList.add("hidden");

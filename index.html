@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=10" />
+<link rel="stylesheet" href="styles.css?v=11" />
 </head>
 <body>
 
@@ -225,6 +225,11 @@
         <ul id="termUsage" class="sents"></ul>
       </section>
 
+      <section class="block hidden" id="termOtherBlock">
+        <h3 data-i18n="term.other">Other Meanings</h3>
+        <ul id="termOther" class="sents"></ul>
+      </section>
+
       <section class="block">
         <button class="ghost small" id="termKoToggle" data-i18n="term.ko.show">한국어 뜻 보기</button>
         <p id="termKo" class="term-ko hidden"></p>
@@ -411,6 +416,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
