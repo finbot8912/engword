@@ -1553,30 +1553,36 @@ async function makePkce() {
 
 // Step 1 — build the authorize URL and reveal the paste-back step.
 async function chatgptSignIn() {
-  if (!state.oauthProxy) {
-    $("oauthMsg").innerHTML = t("oauth.needproxy");
-    document.querySelector(".oauth-adv-wrap")?.setAttribute("open", "");
-    $("oauthProxyInput").focus();
-    return;
+  // Reveal the steps and prepare the authorize link. The login page opens when
+  // the user clicks the step-1 link (a real gesture popup blockers allow) —
+  // not via window.open after an await, which browsers block silently.
+  $("oauthBtn").disabled = true;
+  try {
+    const pkce = await makePkce();
+    const st = b64url(crypto.getRandomValues(new Uint8Array(16)));
+    oauthPkce = { verifier: pkce.verifier, state: st };
+    const url = `${OAUTH_ISSUER}/oauth/authorize?` + new URLSearchParams({
+      response_type: "code",
+      client_id: OAUTH_CLIENT_ID,
+      redirect_uri: OAUTH_REDIRECT,
+      scope: "openid profile email offline_access",
+      code_challenge: pkce.challenge,
+      code_challenge_method: "S256",
+      state: st,
+      id_token_add_organizations: "true",
+      codex_cli_simplified_flow: "true",
+    }).toString();
+    $("oauthOpenLink").href = url;
+    $("oauthFlow").classList.remove("hidden");
+    $("oauthMsg").innerHTML = state.oauthProxy ? t("oauth.opened") : t("oauth.needproxy");
+    if (!state.oauthProxy) document.querySelector(".oauth-adv-wrap")?.setAttribute("open", "");
+    // Convenience auto-open; if blocked, the visible step-1 button still works.
+    try { window.open(url, "_blank", "noopener"); } catch { /* user clicks the link */ }
+  } catch (err) {
+    $("oauthMsg").innerHTML = "⚠️ " + escapeHtml(err.message || String(err));
+  } finally {
+    $("oauthBtn").disabled = false;
   }
-  const pkce = await makePkce();
-  const st = b64url(crypto.getRandomValues(new Uint8Array(16)));
-  oauthPkce = { verifier: pkce.verifier, state: st };
-  const url = `${OAUTH_ISSUER}/oauth/authorize?` + new URLSearchParams({
-    response_type: "code",
-    client_id: OAUTH_CLIENT_ID,
-    redirect_uri: OAUTH_REDIRECT,
-    scope: "openid profile email offline_access",
-    code_challenge: pkce.challenge,
-    code_challenge_method: "S256",
-    state: st,
-    id_token_add_organizations: "true",
-    codex_cli_simplified_flow: "true",
-  }).toString();
-  $("oauthOpenLink").href = url;
-  $("oauthFlow").classList.remove("hidden");
-  $("oauthMsg").innerHTML = t("oauth.opened");
-  window.open(url, "_blank", "noopener");
 }
 
 // Step 2 — take the pasted redirect URL, exchange code for an API key.
@@ -1584,6 +1590,12 @@ async function chatgptFinish() {
   const pasted = $("oauthRedirectInput").value.trim();
   if (!pasted) return;
   if (!oauthPkce) { $("oauthMsg").innerHTML = t("oauth.restart"); return; }
+  if (!state.oauthProxy) {
+    $("oauthMsg").innerHTML = t("oauth.needproxy");
+    document.querySelector(".oauth-adv-wrap")?.setAttribute("open", "");
+    $("oauthProxyInput").focus();
+    return;
+  }
   let code, returnedState;
   try {
     const u = new URL(pasted);
