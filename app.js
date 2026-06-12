@@ -191,6 +191,8 @@ const I18N = {
     "book.none.syn": "저장된 동의어가 없습니다.", "book.none.sents": "저장된 문장이 없습니다.",
 
     "set.eyebrow": "설정", "set.title": "내 설정",
+    "set.oauth": "🔐 OpenAI로 연결 (키 발급 페이지 열기)",
+    "set.oauthmsg": "OpenAI 키 페이지를 새 탭으로 열었습니다. <strong>Create new secret key</strong>를 눌러 키를 만들고, 복사해서 위 입력란에 붙여넣은 뒤 ‘키 변경’을 누르세요.<br><span class=\"muted\">참고: OpenAI는 아직 일반 웹앱용 OAuth 로그인(ChatGPT 계정 연동)을 공개하지 않았습니다. 공개되는 즉시 이 버튼이 원클릭 로그인으로 바뀝니다.</span>",
     "set.lang": "화면 언어 / Language",
     "set.update": "키 변경", "set.text": "텍스트 모델", "set.image": "이미지 모델",
     "set.detect": "모델 자동 감지", "set.test": "연결 테스트",
@@ -230,6 +232,7 @@ const I18N = {
     "book.delete": "delete",
     "book.none.ety": "No etymology saved.", "book.none.idioms": "No idioms saved.",
     "book.none.syn": "No synonyms saved.", "book.none.sents": "No sentences saved.",
+    "set.oauthmsg": "Opened the OpenAI key page in a new tab. Click <strong>Create new secret key</strong>, copy it, paste it above and press Update key.<br><span class=\"muted\">Note: OpenAI has not yet opened OAuth sign-in (ChatGPT account) to third-party web apps. This button will become one-click sign-in as soon as they do.</span>",
     "set.keyok": "API key updated.", "set.keybad": "That doesn't look like a valid API key.",
     "set.textok": "Text model updated.", "set.imageok": "Image model updated.",
     "set.cleared": "Wordbook cleared.",
@@ -1465,6 +1468,15 @@ $("testApiBtn").addEventListener("click", async () => {
   } catch (err) {
     $("settingsMsg").textContent = "✗ " + (err.message || String(err));
   }
+});
+
+// OpenAI has no public third-party OAuth for API access yet (only inside
+// Codex tooling, 2026-06) — so "connect" opens the key page and guides the
+// paste. Swap this for a real PKCE flow once OpenAI opens OAuth clients.
+$("oauthBtn").addEventListener("click", () => {
+  window.open("https://platform.openai.com/api-keys", "_blank", "noopener");
+  $("oauthMsg").innerHTML = t("set.oauthmsg");
+  $("settingsKeyInput").focus();
 });
 
 $("retakeTestBtn").addEventListener("click", startQuiz);
