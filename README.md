@@ -31,6 +31,26 @@ OpenAI API. No build step — plain HTML/CSS/JS.
   review tabs: Wordbook, Etymology, Idioms, Synonyms, Similar Sentences. Saved entries
   re-open without another API call.
 
+## Sign in with ChatGPT (OpenAI OAuth)
+
+Instead of pasting an API key, you can sign in with your ChatGPT/OpenAI account
+(Google login works) using the Codex device-code OAuth flow — the same one the
+Codex CLI, OpenClaw and Hermes use.
+
+Because OpenAI's auth server does not allow browser (CORS) requests, this needs a
+tiny one-time proxy that you host for free:
+
+1. Cloudflare dashboard → **Workers & Pages → Create → Worker**.
+2. Paste the contents of [`worker.js`](worker.js) and **Deploy**.
+3. Copy the Worker URL (e.g. `https://engword-oauth.yourname.workers.dev`).
+4. In EngWord → **Settings**, paste it into **OAuth proxy URL**.
+5. Click **Sign in with ChatGPT**, approve the code on OpenAI's page, done.
+
+The flow obtains a normal OpenAI API key for your account and stores it locally,
+so the rest of the app works unchanged. Note: it relies on OpenAI's private Codex
+endpoints, so it may not work for every account or region — the API-key method
+below always works as a fallback.
+
 ## Models & API key
 
 - Bring your own OpenAI API key (https://platform.openai.com/api-keys). It is

@@ -80,6 +80,7 @@ h1, h2 { letter-spacing: -.02em; }
 }
 .lang-toggle:hover { border-color: var(--accent); }
 .ghost.sel { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-soft); }
+.oauth-adv { margin-top: 6px; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 11px; background: #fbfcfe; }
 
 /* ====================== layout ====================== */
 main { flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 30px 20px 70px; }

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=14" />
+<link rel="stylesheet" href="styles.css?v=15" />
 </head>
 <body>
 
@@ -400,8 +400,13 @@
         <input type="password" id="settingsKeyInput" placeholder="sk-..." autocomplete="off" />
         <button class="primary" id="settingsSaveKeyBtn" data-i18n="set.update">Update key</button>
       </div>
-      <button class="ghost wide" id="oauthBtn" data-i18n="set.oauth">🔐 Connect with OpenAI (get a key)</button>
+      <button class="ghost wide" id="oauthBtn" data-i18n="set.oauth">🔓 Sign in with ChatGPT (OpenAI)</button>
       <p class="hint" id="oauthMsg"></p>
+      <div id="oauthAdvanced" class="oauth-adv">
+        <label class="field-label" data-i18n="set.oauthproxy">OAuth proxy URL (Cloudflare Worker)</label>
+        <input type="text" id="oauthProxyInput" placeholder="https://engword-oauth.yourname.workers.dev" autocomplete="off" />
+        <p class="hint" data-i18n="set.oauthproxyhint">Needed once for ChatGPT sign-in. Deploy worker.js from the repo to Cloudflare (free) and paste its URL here.</p>
+      </div>
       <label class="field-label" data-i18n="set.text">Text model</label>
       <input type="text" id="textModelInput" />
       <label class="field-label" data-i18n="set.image">Image model</label>
@@ -429,6 +434,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

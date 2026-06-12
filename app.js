@@ -17,7 +17,13 @@ const LS = {
   IMAGE_MODEL: "engword_image_model",
   WOTD: "engword_wotd",
   LANG: "engword_lang",
+  OAUTH_PROXY: "engword_oauth_proxy",
 };
+
+// OpenAI Codex public OAuth client (same as the Codex CLI / OpenClaw / Hermes).
+const OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
+const OAUTH_ISSUER = "https://auth.openai.com";
+const OAUTH_DEVICE_PAGE = "https://auth.openai.com/codex/device";
 
 // OpenAI model ids. If a key can't use them, the 404 auto-retry below
 // falls back to whatever models the account actually has.
@@ -55,6 +61,8 @@ const state = {
   tutorHistory: [],
   // UI language ("en" | "ko")
   lang: localStorage.getItem(LS.LANG) || "en",
+  oauthProxy: localStorage.getItem(LS.OAUTH_PROXY) || "",
+  oauthPolling: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -191,8 +199,20 @@ const I18N = {
     "book.none.syn": "저장된 동의어가 없습니다.", "book.none.sents": "저장된 문장이 없습니다.",
 
     "set.eyebrow": "설정", "set.title": "내 설정",
-    "set.oauth": "🔐 OpenAI로 연결 (키 발급 페이지 열기)",
-    "set.oauthmsg": "OpenAI 키 페이지를 새 탭으로 열었습니다. <strong>Create new secret key</strong>를 눌러 키를 만들고, 복사해서 위 입력란에 붙여넣은 뒤 ‘키 변경’을 누르세요.<br><span class=\"muted\">참고: OpenAI는 아직 일반 웹앱용 OAuth 로그인(ChatGPT 계정 연동)을 공개하지 않았습니다. 공개되는 즉시 이 버튼이 원클릭 로그인으로 바뀝니다.</span>",
+    "set.oauth": "🔓 ChatGPT로 로그인 (OpenAI)",
+    "set.oauthproxy": "OAuth 프록시 URL (Cloudflare Worker)",
+    "set.oauthproxyhint": "ChatGPT 로그인에 한 번 필요합니다. 저장소의 worker.js를 Cloudflare에 무료 배포한 뒤 그 URL을 여기에 붙여넣으세요.",
+    "oauth.needproxy": "먼저 아래 <strong>OAuth 프록시 URL</strong>에 Cloudflare Worker 주소를 입력하세요. (worker.js를 배포)",
+    "oauth.starting": "로그인 코드를 받는 중…",
+    "oauth.entercode": "새 탭에서 OpenAI(구글 로그인 가능)에 로그인한 뒤, 이 코드를 입력하세요: <strong style=\"font-size:18px\">{code}</strong><br>승인하면 자동으로 연결됩니다. 이 창을 닫지 마세요…",
+    "oauth.finishing": "로그인 확인 중…",
+    "oauth.success": "ChatGPT 계정으로 연결되었습니다. 이제 바로 사용할 수 있어요!",
+    "oauth.timeout": "시간이 초과되었습니다. 다시 시도해주세요.",
+    "oauth.proxyfail": "프록시 요청 실패 — Worker URL과 배포 상태를 확인하세요.",
+    "oauth.exchangefail": "토큰 교환에 실패했습니다.",
+    "oauth.keyfail": "API 키 발급에 실패했습니다.",
+    "oauth.nokey": "키를 받지 못했습니다. 이 계정은 API 사용이 불가능할 수 있습니다.",
+    "oauth.hint": "OpenAI의 비공개 Codex 엔드포인트를 사용하므로 계정/지역에 따라 동작하지 않을 수 있습니다. 그럴 땐 위의 API 키 방식을 사용하세요.",
     "set.lang": "화면 언어 / Language",
     "set.update": "키 변경", "set.text": "텍스트 모델", "set.image": "이미지 모델",
     "set.detect": "모델 자동 감지", "set.test": "연결 테스트",
@@ -232,7 +252,17 @@ const I18N = {
     "book.delete": "delete",
     "book.none.ety": "No etymology saved.", "book.none.idioms": "No idioms saved.",
     "book.none.syn": "No synonyms saved.", "book.none.sents": "No sentences saved.",
-    "set.oauthmsg": "Opened the OpenAI key page in a new tab. Click <strong>Create new secret key</strong>, copy it, paste it above and press Update key.<br><span class=\"muted\">Note: OpenAI has not yet opened OAuth sign-in (ChatGPT account) to third-party web apps. This button will become one-click sign-in as soon as they do.</span>",
+    "oauth.needproxy": "First enter your Cloudflare Worker address in <strong>OAuth proxy URL</strong> below (deploy worker.js).",
+    "oauth.starting": "Requesting a sign-in code…",
+    "oauth.entercode": "In the new tab, sign in to OpenAI (Google login works), then enter this code: <strong style=\"font-size:18px\">{code}</strong><br>Approve it and you'll be connected automatically. Keep this page open…",
+    "oauth.finishing": "Confirming sign-in…",
+    "oauth.success": "Connected with your ChatGPT account. You're ready to go!",
+    "oauth.timeout": "Timed out. Please try again.",
+    "oauth.proxyfail": "Proxy request failed — check the Worker URL and that it is deployed.",
+    "oauth.exchangefail": "Token exchange failed.",
+    "oauth.keyfail": "Could not obtain an API key.",
+    "oauth.nokey": "No key was returned. This account may not have API access.",
+    "oauth.hint": "This uses OpenAI's private Codex endpoints, so it may not work for every account/region. If it fails, use the API key method above.",
     "set.keyok": "API key updated.", "set.keybad": "That doesn't look like a valid API key.",
     "set.textok": "Text model updated.", "set.imageok": "Image model updated.",
     "set.cleared": "Wordbook cleared.",
@@ -1431,6 +1461,7 @@ function fillSettings() {
   $("settingsKeyInput").value = state.apiKey;
   $("textModelInput").value = state.textModel;
   $("imageModelInput").value = state.imageModel;
+  $("oauthProxyInput").value = state.oauthProxy;
   $("settingsMsg").textContent = "";
 }
 
@@ -1470,14 +1501,100 @@ $("testApiBtn").addEventListener("click", async () => {
   }
 });
 
-// OpenAI has no public third-party OAuth for API access yet (only inside
-// Codex tooling, 2026-06) — so "connect" opens the key page and guides the
-// paste. Swap this for a real PKCE flow once OpenAI opens OAuth clients.
-$("oauthBtn").addEventListener("click", () => {
-  window.open("https://platform.openai.com/api-keys", "_blank", "noopener");
-  $("oauthMsg").innerHTML = t("set.oauthmsg");
-  $("settingsKeyInput").focus();
+/* ----------------------------------------------------------------
+   "Sign in with ChatGPT" — OpenAI Codex device-code OAuth.
+   The same flow Codex CLI / OpenClaw / Hermes use. Browsers are blocked
+   by CORS on auth.openai.com, so requests go through the user's own
+   Cloudflare Worker (worker.js); see Settings → OAuth proxy URL.
+   ---------------------------------------------------------------- */
+$("oauthProxyInput").addEventListener("change", () => {
+  state.oauthProxy = $("oauthProxyInput").value.trim().replace(/\/$/, "");
+  localStorage.setItem(LS.OAUTH_PROXY, state.oauthProxy);
 });
+
+function oauthPost(path, body) {
+  return fetch(state.oauthProxy + "/oai" + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function chatgptSignIn() {
+  if (state.oauthPolling) return;
+  if (!state.oauthProxy) {
+    $("oauthMsg").innerHTML = t("oauth.needproxy");
+    $("oauthProxyInput").focus();
+    return;
+  }
+  state.oauthPolling = true;
+  $("oauthBtn").disabled = true;
+  try {
+    // 1) request a user code
+    $("oauthMsg").textContent = t("oauth.starting");
+    let res = await oauthPost("/api/accounts/deviceauth/usercode", { client_id: OAUTH_CLIENT_ID });
+    if (!res.ok) throw new Error(t("oauth.proxyfail") + " (" + res.status + ")");
+    const dev = await res.json();
+    const userCode = dev.user_code || dev.usercode;
+    const interval = (dev.interval || 5) * 1000;
+
+    // 2) user enters the code on OpenAI's device page (their own login, no CORS)
+    window.open(OAUTH_DEVICE_PAGE, "_blank", "noopener");
+    $("oauthMsg").innerHTML = t("oauth.entercode", { code: escapeHtml(userCode) });
+
+    // 3) poll until the user approves
+    let poll;
+    const deadline = Date.now() + 15 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await sleep(interval);
+      const r = await oauthPost("/api/accounts/deviceauth/token", {
+        device_auth_id: dev.device_auth_id, user_code: userCode,
+      });
+      if (r.status === 200) { poll = await r.json(); break; }
+      if (r.status !== 403 && r.status !== 404) throw new Error(t("oauth.proxyfail") + " (" + r.status + ")");
+    }
+    if (!poll) throw new Error(t("oauth.timeout"));
+
+    // 4) exchange the authorization code (+ PKCE) for tokens
+    $("oauthMsg").textContent = t("oauth.finishing");
+    res = await oauthPost("/oauth/token", {
+      grant_type: "authorization_code",
+      code: poll.authorization_code,
+      redirect_uri: OAUTH_ISSUER + "/deviceauth/callback",
+      client_id: OAUTH_CLIENT_ID,
+      code_verifier: poll.code_verifier,
+    });
+    if (!res.ok) throw new Error(t("oauth.exchangefail") + " (" + res.status + ")");
+    const tok = await res.json();
+
+    // 5) trade the id_token for a usable OpenAI API key
+    res = await oauthPost("/oauth/token", {
+      grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+      client_id: OAUTH_CLIENT_ID,
+      requested_token: "openai-api-key",
+      subject_token: tok.id_token,
+      subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
+    });
+    if (!res.ok) throw new Error(t("oauth.keyfail") + " (" + res.status + ")");
+    const keyResp = await res.json();
+    const apiKey = keyResp.access_token || keyResp.api_key;
+    if (!apiKey) throw new Error(t("oauth.nokey"));
+
+    state.apiKey = apiKey;
+    localStorage.setItem(LS.KEY, apiKey);
+    $("settingsKeyInput").value = apiKey;
+    $("oauthMsg").innerHTML = "✅ " + t("oauth.success");
+  } catch (err) {
+    $("oauthMsg").innerHTML = "⚠️ " + escapeHtml(err.message || String(err)) + "<br><span class=\"muted\">" + t("oauth.hint") + "</span>";
+  } finally {
+    state.oauthPolling = false;
+    $("oauthBtn").disabled = false;
+  }
+}
+
+$("oauthBtn").addEventListener("click", chatgptSignIn);
 
 $("retakeTestBtn").addEventListener("click", startQuiz);
 $("clearBookBtn").addEventListener("click", () => {
