@@ -180,6 +180,7 @@ const I18N = {
     "book.sub": "자동으로 저장되어 언제든 복습할 수 있습니다.",
     "tab.words": "단어집", "tab.ety": "어원", "tab.idioms": "숙어",
     "tab.syn": "동의어", "tab.sents": "유사 문장",
+    "book.kind.all": "전체", "book.kind.word": "📖 사전", "book.kind.term": "🧩 용어",
     "book.empty": "단어장이 비어 있습니다.<br>사전에서 단어를 검색하면 자동으로 저장됩니다.",
     "book.export": "⬇ 단어장 백업 (JSON)", "book.import": "⬆ 백업 불러오기",
     "book.exported": "단어 {n}개를 백업 파일로 저장했습니다. 파일을 안전한 곳에 보관하세요.",
@@ -792,6 +793,15 @@ function deleteFromBook(key) {
 }
 
 let currentTab = "words";
+let bookKind = "all"; // "all" | "word" | "term"
+
+document.querySelectorAll("#kindFilter .kchip").forEach((c) =>
+  c.addEventListener("click", () => {
+    bookKind = c.dataset.kind;
+    document.querySelectorAll("#kindFilter .kchip").forEach((x) =>
+      x.classList.toggle("active", x === c));
+    renderBook(currentTab);
+  }));
 
 document.querySelectorAll("#bookTabs .tab").forEach((t) =>
   t.addEventListener("click", () => {
@@ -807,7 +817,9 @@ function bookEntries() {
 
 function renderBook(tab) {
   const box = $("bookContent");
-  const entries = bookEntries();
+  let entries = bookEntries();
+  if (bookKind === "term") entries = entries.filter(([, e]) => e.kind === "term");
+  if (bookKind === "word") entries = entries.filter(([, e]) => e.kind !== "term");
   if (!entries.length) {
     box.innerHTML = `<div class="book-empty">${t("book.empty")}</div>`;
     return;

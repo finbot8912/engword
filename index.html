@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=11" />
+<link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body>
 
@@ -358,6 +358,11 @@
       <h1 class="page-title" data-i18n="book.title">Everything you've looked up</h1>
       <p class="muted center" data-i18n="book.sub">Saved automatically, ready to review any time.</p>
     </div>
+    <div class="kind-filter" id="kindFilter">
+      <button class="kchip active" data-kind="all" data-i18n="book.kind.all">All</button>
+      <button class="kchip" data-kind="word" data-i18n="book.kind.word">📖 Dictionary</button>
+      <button class="kchip" data-kind="term" data-i18n="book.kind.term">🧩 Terms</button>
+    </div>
     <div class="tabs" id="bookTabs">
       <button class="tab active" data-tab="words" data-i18n="tab.words">Wordbook</button>
       <button class="tab" data-tab="etymology" data-i18n="tab.ety">Etymology</button>
@@ -416,6 +421,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

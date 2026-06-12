@@ -386,6 +386,18 @@ hr { border: none; border-top: 1px solid var(--line); margin: 24px 0 14px; }
 
 .book-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 0 0 10px; }
 
+.kind-filter { display: flex; gap: 8px; justify-content: center; margin: 14px 0 2px; }
+.kchip {
+  border: 1.5px solid var(--line); background: var(--card); color: var(--muted);
+  padding: 7px 18px; border-radius: 999px; font-size: 13.5px; font-weight: 700;
+  font-family: inherit; cursor: pointer; transition: border-color .12s, color .12s;
+}
+.kchip:hover { border-color: var(--accent); color: var(--accent-dark); }
+.kchip.active { background: #0e7490; border-color: #0e7490; color: #fff; }
+.kchip[data-kind="word"].active, .kchip[data-kind="all"].active {
+  background: linear-gradient(135deg, #6366f1, #4f46e5); border-color: transparent;
+}
+
 .book-content { display: grid; gap: 14px; }
 .book-item {
   background: var(--card); border: 1px solid var(--line); border-radius: 14px;
